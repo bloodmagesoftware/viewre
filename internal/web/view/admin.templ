@@ -1,0 +1,117 @@
+// ViewRe is a web-based code review tool.
+// Copyright (C) 2025  Frank Mayer
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+
+package view
+
+import "viewre/internal/db"
+
+templ Admin() {
+	@Layout("Admin", "p-2 md:px-0 md:max-w-2xl md:mx-auto") {
+		<h1 class="text-4xl font-bold mb-2">Admin</h1>
+		<h2 class="text-2xl font-bold mb-2">Users</h2>
+		for id, user := range db.Users.Iterate {
+			if user.Active {
+				<p class="text-green-500">{ user.Name }</p>
+			} else {
+				<p class="text-red-500">{ user.Name } { user.Email } <a href={ fmtUrl("/admin/enable-user?id=%s", id) } class="btn">Enable</a></p>
+			}
+		}
+		<h2 class="text-2xl mt-8 font-bold mb-2">Repositories</h2>
+		<details>
+			<summary class="cursor-pointer">Add Repository</summary>
+			<form
+				action="/admin/repo"
+				method="POST"
+				class="mt-4 p-4 bg-stone-900 rounded-lg"
+			>
+				<label class="input">
+					Name
+					<input type="text" name="name" id="name" required/>
+				</label>
+				<label class="input">
+					URL
+					<input type="text" name="url" id="url" required/>
+				</label>
+				<label class="input">
+					Authentication Method
+					<select
+						name="auth_method"
+						id="auth_method"
+						onchange="
+                        const authMethod = this.value;
+                        const usernamePassword = document.getElementById('username_password');
+                        const sshPrivateKey = document.getElementById('ssh_private_key');
+                        switch (authMethod) {
+                        case 'username_password':
+                            usernamePassword.classList.remove('hidden');
+                            usernamePassword.querySelectorAll('input').forEach(input => {input.required = true});
+                            sshPrivateKey.classList.add('hidden');
+                            sshPrivateKey.querySelector('textarea').value = '';
+                            break;
+                        case 'ssh_private_key':
+                            sshPrivateKey.classList.remove('hidden');
+                            sshPrivateKey.querySelector('textarea').required = true;
+                            usernamePassword.classList.add('hidden');
+                            usernamePassword.querySelectorAll('input').forEach(input => {input.value = ''; input.required = false});
+                            break;
+                        case 'none':
+                            usernamePassword.classList.add('hidden');
+                            sshPrivateKey.classList.add('hidden');
+                            sshPrivateKey.querySelector('textarea').value = '';
+                            sshPrivateKey.querySelector('textarea').required = false;
+                            usernamePassword.querySelectorAll('input').forEach(input => {input.value = ''; input.required = false});
+                            break;
+                        }
+                    "
+					>
+						<option value="none">None</option>
+						<option value="username_password">Username and Password</option>
+						<option value="ssh_private_key">SSH Private Key</option>
+					</select>
+				</label>
+				<section id="username_password" class="hidden">
+					<label class="input">
+						Username
+						<input type="text" name="username" id="username"/>
+					</label>
+					<label class="input">
+						Password
+						<input type="password" name="password" id="password"/>
+					</label>
+				</section>
+				<section id="ssh_private_key" class="hidden">
+					<label class="input">
+						SSH Private Key
+						<textarea class="h-24" name="ssh_private_key" id="ssh_private_key"></textarea>
+					</label>
+				</section>
+				<button type="submit" class="btn">Add</button>
+			</form>
+		</details>
+		for key, repo := range db.Repos.Iterate {
+			<div class="block" href={ fmtUrl("/repo/%s", key) }>
+				{ repo.Name }
+				<button
+					type="submit"
+					class="inline ml-4 text-red-700 cursor-pointer hover:text-red-800"
+					data-name={ key }
+					onclick="fetch(`/admin/repo?name=${ this.dataset.name }`, {method: 'DELETE'}).then(resp => {if (resp.ok) {window.location.reload()}}).catch(alert)"
+				>Delete</button>
+			</div>
+		}
+	}
+}

@@ -1,0 +1,27 @@
+// ViewRe is a web-based code review tool.
+// Copyright (C) 2025  Frank Mayer
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+package view
+
+import "fmt"
+
+templ Compare() {
+	@Layout("Compare", "p-2 md:px-0 md:max-w-2xl md:mx-auto") {
+		<h1 class="text-4xl font-bold mb-8">Compare</h1>
+		<p>{ fmt.Sprintf("a: %s",ctx.Value("a")) }</p>
+		<p>{ fmt.Sprintf("b: %s",ctx.Value("b")) }</p>
+	}
+}
