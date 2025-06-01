@@ -26,7 +26,9 @@ import (
 	tree_sitter_markdown "github.com/tree-sitter-grammars/tree-sitter-markdown/bindings/go"
 	tree_sitter "github.com/tree-sitter/go-tree-sitter"
 	tree_sitter_go "github.com/tree-sitter/tree-sitter-go/bindings/go"
+	tree_sitter_java "github.com/tree-sitter/tree-sitter-java/bindings/go"
 	tree_sitter_javascript "github.com/tree-sitter/tree-sitter-javascript/bindings/go"
+	tree_sitter_json "github.com/tree-sitter/tree-sitter-json/bindings/go"
 	tree_sitter_rust "github.com/tree-sitter/tree-sitter-rust/bindings/go"
 	tree_sitter_typescript "github.com/tree-sitter/tree-sitter-typescript/bindings/go"
 
@@ -34,12 +36,14 @@ import (
 )
 
 var languages = map[string]*tree_sitter.Language{
-	"js":  tree_sitter.NewLanguage(tree_sitter_javascript.Language()),
-	"ts":  tree_sitter.NewLanguage(tree_sitter_typescript.LanguageTypescript()),
-	"tsx": tree_sitter.NewLanguage(tree_sitter_typescript.LanguageTSX()),
-	"go":  tree_sitter.NewLanguage(tree_sitter_go.Language()),
-	"rs":  tree_sitter.NewLanguage(tree_sitter_rust.Language()),
-	"md":  tree_sitter.NewLanguage(tree_sitter_markdown.Language()),
+	"md":   tree_sitter.NewLanguage(tree_sitter_markdown.Language()),
+	"go":   tree_sitter.NewLanguage(tree_sitter_go.Language()),
+	"java": tree_sitter.NewLanguage(tree_sitter_java.Language()),
+	"js":   tree_sitter.NewLanguage(tree_sitter_javascript.Language()),
+	"json": tree_sitter.NewLanguage(tree_sitter_json.Language()),
+	"rs":   tree_sitter.NewLanguage(tree_sitter_rust.Language()),
+	"ts":   tree_sitter.NewLanguage(tree_sitter_typescript.LanguageTypescript()),
+	"tsx":  tree_sitter.NewLanguage(tree_sitter_typescript.LanguageTSX()),
 }
 
 func parse(code string, lang string, oldTree *tree_sitter.Tree) (*tree_sitter.Tree, error) {
@@ -57,7 +61,18 @@ func parse(code string, lang string, oldTree *tree_sitter.Tree) (*tree_sitter.Tr
 }
 
 func Patch(patch diff.FilePatch) (header string, body string) {
+	if patch == nil {
+		return
+	}
 	from, to := patch.Files()
+	if from == nil {
+		header = fmt.Sprintf("from is nil %v", patch)
+		return
+	}
+	if to == nil {
+		header = fmt.Sprintf("to is nil %v", patch)
+		return
+	}
 	headerBuilder := strings.Builder{}
 	headerBuilder.WriteString(`<p class="inline-block font-bold text-white">`)
 	headerBuilder.WriteString(html.EscapeString(fmt.Sprintf("diff --git i/%s w/%s", from.Path(), to.Path())))
@@ -188,8 +203,11 @@ func Patch(patch diff.FilePatch) (header string, body string) {
 
 func extToLang(ext string) string {
 	lang := strings.TrimPrefix(ext, ".")
-	if lang == "jsx" {
+	switch lang {
+	case "jsx":
 		return "js"
+	case "json5", "jsonc":
+		return "json"
 	}
 	return lang
 }
@@ -207,10 +225,13 @@ func getNodeClass(nodeType string) (string, bool) {
 	case "comment", "line_comment", "block_comment":
 		return "text-neutral-400", true
 
-	case "string", "string_fragment", "string_literal", "raw_string_literal", "interpreted_string_literal", "interpreted_string_literal_content", "\"", "'", "`", "fenced_code_block_delimiter":
+	case "string", "string_content", "string_fragment", "string_literal", "raw_string_literal", "interpreted_string_literal", "interpreted_string_literal_content", "\"", "'", "`", "fenced_code_block_delimiter":
 		return "text-green-400", true
 
-	case "number", "int_literal", "float_literal", "rune_literal", "chan":
+	case "escape_sequence":
+		return "text-lime-400", true
+
+	case "number", "int", "float", "int_literal", "float_literal", "rune_literal", "chan", "decimal_integer_literal", "hex_integer_literal", "octal_integer_literal", "binary_integer_literal":
 		return "text-amber-400", true
 
 	case "field_identifier":
@@ -222,13 +243,13 @@ func getNodeClass(nodeType string) (string, bool) {
 	case "identifier":
 		return "text-white", true
 
-	case "type_identifier", "language":
+	case "type_identifier", "language", "void_type":
 		return "text-yellow-400", true
 
 	case "export":
 		return "text-cyan-400", true
 
-	case "import", "from", "as", "require", "package", "class", "interface", "enum", "type", "function", "fn", "fun", "func", "go", "var", "let", "const", "async", "await", "break", "case", "catch", "continue", "debugger", "default", "delete", "do", "else", "finally", "for", "if", "in", "instanceof", "new", "return", "switch", "this", "throw", "try", "typeof", "void", "while", "with", "yield":
+	case "import", "from", "as", "require", "package", "class", "interface", "enum", "type", "function", "fn", "fun", "func", "go", "var", "let", "const", "async", "await", "break", "case", "catch", "continue", "debugger", "default", "delete", "do", "else", "finally", "for", "if", "in", "instanceof", "new", "return", "switch", "this", "throw", "try", "typeof", "void", "while", "with", "yield", "private", "public", "protected", "internal":
 		return "text-indigo-400", true
 
 	case "operator", ":=", "=", "+", "-", "*", "/", "%", "==", "!=", "===", "!==", "=>", "==>", "<-", "->", "<<", ">>", "<", ">", "<=", ">=", "&&", "||", "!", "|", "&", "$":

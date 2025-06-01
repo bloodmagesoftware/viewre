@@ -2,6 +2,7 @@
 node_modules
 /tmp/
 /data/
+/viewre
 *.min.css
 *.min.js
 *_templ.go
