@@ -19,11 +19,11 @@ package view
 import (
 	"fmt"
 	"html"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 
+	tree_sitter_markdown "github.com/tree-sitter-grammars/tree-sitter-markdown/bindings/go"
 	tree_sitter "github.com/tree-sitter/go-tree-sitter"
 	tree_sitter_go "github.com/tree-sitter/tree-sitter-go/bindings/go"
 	tree_sitter_javascript "github.com/tree-sitter/tree-sitter-javascript/bindings/go"
@@ -39,6 +39,7 @@ var languages = map[string]*tree_sitter.Language{
 	"tsx": tree_sitter.NewLanguage(tree_sitter_typescript.LanguageTSX()),
 	"go":  tree_sitter.NewLanguage(tree_sitter_go.Language()),
 	"rs":  tree_sitter.NewLanguage(tree_sitter_rust.Language()),
+	"md":  tree_sitter.NewLanguage(tree_sitter_markdown.Language()),
 }
 
 func parse(code string, lang string, oldTree *tree_sitter.Tree) (*tree_sitter.Tree, error) {
@@ -90,107 +91,97 @@ func Patch(patch diff.FilePatch) (header string, body string) {
 
 	fromTree, err := parse(fromFullContent, extToLang(fromExt), nil)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error parsing tree-sitter (from): %s\n", err)
-		return
+		fromTree = nil
 	}
 
 	fromSegments := renderWithHighlighting(
 		[]byte(fromFullContent),
-		collectSpans(
-			fromTree.RootNode(),
-		),
+		collectSpans(fromTree),
 	)
 
 	toTree, err := parse(toFullContent, extToLang(toExt), nil)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error parsing tree-sitter (to): %s\n", err)
-		return
+		toTree = nil
 	}
 
 	toSegments := renderWithHighlighting(
 		[]byte(toFullContent),
-		collectSpans(
-			toTree.RootNode(),
-		),
+		collectSpans(toTree),
 	)
-
-	bodyBuilder := strings.Builder{}
 
 	fromOffset := uint(0)
 	toOffset := uint(0)
 
+	bodyLeftBuilder := strings.Builder{}
+	bodyRightBuilder := strings.Builder{}
+
+	leftDiff := 0
+	rightDiff := 0
+
 	for _, chunk := range patch.Chunks() {
 		chunkLength := uint(len([]byte(chunk.Content())))
 
-		var (
-			segments    []highlightedSegment
-			windowStart uint
-			windowEnd   uint
-			code        []byte
-		)
-
 		switch chunk.Type() {
 		case diff.Equal:
-			bodyBuilder.WriteString(
+			if spacingLeft := rightDiff - leftDiff; spacingLeft > 0 {
+				bodyLeftBuilder.WriteString(fmt.Sprintf(`<div class="chunk chunk--space">%s</div>`, strings.Repeat("<br>", spacingLeft)))
+			}
+			if spacingRight := leftDiff - rightDiff; spacingRight > 0 {
+				bodyRightBuilder.WriteString(fmt.Sprintf(`<div class="chunk chunk--space">%s</div>`, strings.Repeat("<br>", spacingRight)))
+			}
+			leftDiff = 0
+			rightDiff = 0
+			rendered := render(toSegments, toOffset, toOffset+chunkLength, []byte(toFullContent))
+			bodyLeftBuilder.WriteString(
 				fmt.Sprintf(
-					`<div data-start="%d" data-end="%d" class="whitespace-pre font-mono chunk chunk--equal">`,
+					`<div data-start="%d" data-end="%d" class="chunk chunk--left chunk--equal">`,
 					toOffset,
 					toOffset+chunkLength,
 				),
 			)
-			windowStart = toOffset
+			bodyLeftBuilder.WriteString(rendered)
+			bodyLeftBuilder.WriteString(`</div>`)
+			bodyRightBuilder.WriteString(
+				fmt.Sprintf(
+					`<div data-start="%d" data-end="%d" class="chunk chunk--equal">`,
+					toOffset,
+					toOffset+chunkLength,
+				),
+			)
+			bodyRightBuilder.WriteString(rendered)
+			bodyRightBuilder.WriteString(`</div>`)
 			fromOffset += chunkLength
 			toOffset += chunkLength
-			windowEnd = toOffset
-			segments = toSegments
-			code = []byte(toFullContent)
 
 		case diff.Add:
-			bodyBuilder.WriteString(
+			bodyRightBuilder.WriteString(
 				fmt.Sprintf(
-					`<div data-start="%d" data-end="%d" class="whitespace-pre font-mono chunk chunk--add">`,
+					`<div data-start="%d" data-end="%d" class="chunk chunk--add">`,
 					toOffset,
 					toOffset+chunkLength,
 				),
 			)
-			windowStart = toOffset
+			bodyRightBuilder.WriteString(render(toSegments, toOffset, toOffset+chunkLength, []byte(toFullContent)))
+			bodyRightBuilder.WriteString(`</div>`)
 			toOffset += chunkLength
-			windowEnd = toOffset
-			segments = toSegments
-			code = []byte(toFullContent)
+			rightDiff = countLineBreaks(chunk.Content())
 
 		case diff.Delete:
-			bodyBuilder.WriteString(
+			bodyLeftBuilder.WriteString(
 				fmt.Sprintf(
-					`<div data-start="%d" data-end="%d" class="whitespace-pre font-mono chunk chunk--delete">`,
+					`<div data-start="%d" data-end="%d" class="chunk chunk--delete">`,
 					toOffset,
 					toOffset+chunkLength,
 				),
 			)
-			windowStart = fromOffset
+			bodyLeftBuilder.WriteString(render(fromSegments, fromOffset, fromOffset+chunkLength, []byte(fromFullContent)))
+			bodyLeftBuilder.WriteString(`</div>`)
 			fromOffset += chunkLength
-			windowEnd = fromOffset
-			segments = fromSegments
-			code = []byte(fromFullContent)
+			leftDiff = countLineBreaks(chunk.Content())
 		}
-
-		for _, segment := range segments {
-			// skip completely out of this chunk
-			if segment.end < windowStart || segment.start > windowEnd {
-				continue
-			}
-			// clip to [start,end]
-			s := max(segment.start, windowStart)
-			e := min(segment.end, windowEnd)
-			slice := code[s:e]
-
-			bodyBuilder.WriteString(fmt.Sprintf(`<span class="%s" data-start="%d" data-end="%d" data-kind="%s" data-grammarname="%s">%s</span>`, segment.class, s, e, html.EscapeString(segment.kind), html.EscapeString(segment.grammarname), html.EscapeString(string(slice))))
-		}
-
-		bodyBuilder.WriteString(`</div>`)
 	}
 
-	body = bodyBuilder.String()
+	body = fmt.Sprintf(`<div class="diff"><div class="diff__left">%s</div><div class="diff__right">%s</div></div>`, bodyLeftBuilder.String(), bodyRightBuilder.String())
 
 	return
 }
@@ -214,33 +205,36 @@ type syntaxSpan struct {
 func getNodeClass(nodeType string) (string, bool) {
 	switch nodeType {
 	case "comment", "line_comment", "block_comment":
-		return "text-gray-500", true
+		return "text-neutral-400", true
 
-	case "string", "string_fragment", "string_literal", "raw_string_literal", "interpreted_string_literal", "interpreted_string_literal_content", "\"", "'", "`":
-		return "text-green-500", true
+	case "string", "string_fragment", "string_literal", "raw_string_literal", "interpreted_string_literal", "interpreted_string_literal_content", "\"", "'", "`", "fenced_code_block_delimiter":
+		return "text-green-400", true
 
 	case "number", "int_literal", "float_literal", "rune_literal", "chan":
-		return "text-amber-500", true
+		return "text-amber-400", true
 
 	case "field_identifier":
 		return "text-blue-400", true
 
+	case "_line":
+		return "text-pink-400", true
+
 	case "identifier":
 		return "text-white", true
 
-	case "type_identifier":
-		return "text-yellow-500", true
+	case "type_identifier", "language":
+		return "text-yellow-400", true
 
 	case "export":
-		return "text-cyan-500", true
+		return "text-cyan-400", true
 
 	case "import", "from", "as", "require", "package", "class", "interface", "enum", "type", "function", "fn", "fun", "func", "go", "var", "let", "const", "async", "await", "break", "case", "catch", "continue", "debugger", "default", "delete", "do", "else", "finally", "for", "if", "in", "instanceof", "new", "return", "switch", "this", "throw", "try", "typeof", "void", "while", "with", "yield":
-		return "text-indigo-500", true
+		return "text-indigo-400", true
 
 	case "operator", ":=", "=", "+", "-", "*", "/", "%", "==", "!=", "===", "!==", "=>", "==>", "<-", "->", "<<", ">>", "<", ">", "<=", ">=", "&&", "||", "!", "|", "&", "$":
-		return "text-cyan-500", true
+		return "text-cyan-400", true
 
-	case "punctuation", "{", "}", "(", ")", "[", "]", ";", "?", ":", ",", ".":
+	case "punctuation", "{", "}", "(", ")", "[", "]", ";", "?", ":", ",", ".", "atx_h1_marker", "atx_h2_marker", "atx_h3_marker", "atx_h4_marker", "atx_h5_marker", "atx_h6_marker":
 		return "text-gray-400", true
 
 	default:
@@ -248,7 +242,11 @@ func getNodeClass(nodeType string) (string, bool) {
 	}
 }
 
-func collectSpans(node *tree_sitter.Node) []syntaxSpan {
+func collectSpans(tree *tree_sitter.Tree) []syntaxSpan {
+	if tree == nil {
+		return nil
+	}
+
 	var spans []syntaxSpan
 
 	var traverse func(*tree_sitter.Node)
@@ -274,7 +272,7 @@ func collectSpans(node *tree_sitter.Node) []syntaxSpan {
 		}
 	}
 
-	traverse(node)
+	traverse(tree.RootNode())
 
 	sort.Slice(spans, func(i, j int) bool {
 		return spans[i].start < spans[j].start
@@ -285,7 +283,14 @@ func collectSpans(node *tree_sitter.Node) []syntaxSpan {
 
 func renderWithHighlighting(code []byte, spans []syntaxSpan) []highlightedSegment {
 	if len(spans) == 0 {
-		return nil
+		return []highlightedSegment{
+			{
+				text:  string(code),
+				class: "text-white",
+				start: 0,
+				end:   uint(len(code)),
+			},
+		}
 	}
 
 	var segments []highlightedSegment
@@ -331,4 +336,27 @@ type highlightedSegment struct {
 	end         uint
 	kind        string
 	grammarname string
+}
+
+func countLineBreaks(s string) int {
+	return strings.Count(s, "\n")
+}
+
+func render(segments []highlightedSegment, windowStart uint, windowEnd uint, code []byte) string {
+	chunkBuilder := strings.Builder{}
+
+	for _, segment := range segments {
+		// skip completely out of this chunk
+		if segment.end < windowStart || segment.start > windowEnd {
+			continue
+		}
+		// clip to [start,end]
+		s := max(segment.start, windowStart)
+		e := min(segment.end, windowEnd)
+		slice := code[s:e]
+
+		chunkBuilder.WriteString(fmt.Sprintf(`<span class="%s" data-start="%d" data-end="%d" data-kind="%s" data-grammarname="%s">%s</span>`, segment.class, s, e, html.EscapeString(segment.kind), html.EscapeString(segment.grammarname), html.EscapeString(string(slice))))
+	}
+
+	return chunkBuilder.String()
 }

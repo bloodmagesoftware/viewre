@@ -54,8 +54,25 @@ body {
     @apply drop-shadow-md drop-shadow-current outline outline-current outline-dashed;
   }
 
+  .diff {
+    grid-template-columns: 50% 50%;
+    grid-template-rows: 1fr;
+    grid-template-areas: "left right";
+    @apply grid bg-stone-900 mt-4 rounded-md;
+  }
+  .diff__left {
+    grid-area: left;
+  }
+  .diff__right {
+    grid-area: right;
+  }
+  .diff__left,
+  .diff__right {
+    @apply block p-2 overflow-x-auto;
+  }
+
   .chunk {
-    @apply whitespace-pre font-mono;
+    @apply whitespace-pre font-mono block text-xs w-fit px-1;
   }
   .chunk--add {
     @apply bg-green-900;
@@ -65,6 +82,6 @@ body {
   }
   .chunk--add,
   .chunk--delete {
-    @apply w-1/2 inline-block overflow-x-clip;
+    @apply min-w-fit rounded-sm;
   }
 }

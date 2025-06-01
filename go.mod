@@ -9,6 +9,7 @@ require (
 	github.com/coreos/go-oidc/v3 v3.14.1
 	github.com/go-git/go-git/v5 v5.16.0
 	github.com/gorilla/sessions v1.4.0
+	github.com/tree-sitter-grammars/tree-sitter-markdown v0.5.0
 	github.com/tree-sitter/go-tree-sitter v0.25.0
 	github.com/tree-sitter/tree-sitter-go v0.23.4
 	github.com/tree-sitter/tree-sitter-javascript v0.23.1
