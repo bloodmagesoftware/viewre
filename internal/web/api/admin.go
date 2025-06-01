@@ -39,6 +39,13 @@ func AdminEnableUserHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+func encodeSshKey(key string) []byte {
+	if len(key) == 0 {
+		return nil
+	}
+	return []byte(key)
+}
+
 func AdminRepoHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "DELETE":
@@ -61,7 +68,8 @@ func AdminRepoHandler(w http.ResponseWriter, r *http.Request) {
 			r.FormValue("url"),
 			r.FormValue("username"),
 			r.FormValue("password"),
-			r.FormValue("ssh_private_key"),
+			encodeSshKey(r.FormValue("ssh_private_key")),
+			r.FormValue("ssh_passphrase"),
 		}
 		if repo.Name == "" {
 			http.Error(w, "No name provided", http.StatusBadRequest)
@@ -76,7 +84,7 @@ func AdminRepoHandler(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, "No password provided", http.StatusBadRequest)
 				return
 			}
-			if repo.SshPrivateKey != "" {
+			if len(repo.SshPrivateKey) > 0 {
 				http.Error(w, "Only one authentication method can be used", http.StatusBadRequest)
 				return
 			}

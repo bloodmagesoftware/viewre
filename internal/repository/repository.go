@@ -14,22 +14,16 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-package view
+package repository
 
 import (
-	"embed"
-	"fmt"
-
-	"github.com/a-h/templ"
+	"os"
+	"path/filepath"
 )
 
-//go:embed *.min.css *.woff2
-var StaticFiles embed.FS
+var tempDir string
 
-func staticUrl(path string) string {
-	return "/_static/" + path
-}
-
-func fmtUrl(format string, args ...any) templ.SafeURL {
-	return templ.URL(fmt.Sprintf(format, args...))
+func init() {
+	tempDir = filepath.Join(os.TempDir(), "viewre")
+	_ = os.MkdirAll(tempDir, 0777)
 }

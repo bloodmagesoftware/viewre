@@ -38,7 +38,7 @@ templ Layout(title string, class ...string) {
 				</nav>
 				if ctx.Value("logged_in").(bool) {
 					<a
-						class="fixed top-4 right-6"
+						class="absolute top-4 right-6 z-10"
 						href="/profile"
 					>
 						<img
@@ -48,7 +48,7 @@ templ Layout(title string, class ...string) {
 					</a>
 				} else {
 					<a
-						class="btn fixed top-4 right-6"
+						class="btn absolute top-4 right-6 z-10"
 						href="/auth/login"
 					>Login</a>
 				}

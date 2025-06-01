@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-
 package view
 
 import "viewre/internal/db"
@@ -61,6 +60,7 @@ templ Admin() {
                             usernamePassword.querySelectorAll('input').forEach(input => {input.required = true});
                             sshPrivateKey.classList.add('hidden');
                             sshPrivateKey.querySelector('textarea').value = '';
+                            sshPrivateKey.querySelector('input').value = '';
                             break;
                         case 'ssh_private_key':
                             sshPrivateKey.classList.remove('hidden');
@@ -72,6 +72,7 @@ templ Admin() {
                             usernamePassword.classList.add('hidden');
                             sshPrivateKey.classList.add('hidden');
                             sshPrivateKey.querySelector('textarea').value = '';
+                            sshPrivateKey.querySelector('input').value = '';
                             sshPrivateKey.querySelector('textarea').required = false;
                             usernamePassword.querySelectorAll('input').forEach(input => {input.value = ''; input.required = false});
                             break;
@@ -86,17 +87,21 @@ templ Admin() {
 				<section id="username_password" class="hidden">
 					<label class="input">
 						Username
-						<input type="text" name="username" id="username"/>
+						<input type="text" name="username"/>
 					</label>
 					<label class="input">
 						Password
-						<input type="password" name="password" id="password"/>
+						<input type="password" name="password"/>
 					</label>
 				</section>
 				<section id="ssh_private_key" class="hidden">
 					<label class="input">
 						SSH Private Key
-						<textarea class="h-24" name="ssh_private_key" id="ssh_private_key"></textarea>
+						<textarea class="h-24" name="ssh_private_key"></textarea>
+					</label>
+					<label class="input">
+						SSH Passphrase
+						<input type="password" name="ssh_passphrase"/>
 					</label>
 				</section>
 				<button type="submit" class="btn">Add</button>

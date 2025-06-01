@@ -16,7 +16,12 @@
 
 package db
 
-import "github.com/bloodmagesoftware/speicher"
+import (
+	"github.com/bloodmagesoftware/speicher"
+	"github.com/go-git/go-git/v5/plumbing/transport"
+	"github.com/go-git/go-git/v5/plumbing/transport/http"
+	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
+)
 
 var Repos, _ = speicher.LoadMap[*Repo]("data/repos.json")
 
@@ -25,5 +30,23 @@ type Repo struct {
 	Url           string `json:"url"`
 	Username      string `json:"username,omitempty"`
 	Password      string `json:"password,omitempty"`
-	SshPrivateKey string `json:"ssh_private_key,omitempty"`
+	SshPrivateKey []byte `json:"ssh_private_key,omitempty"`
+	SshPassphrase string `json:"ssh_passphrase,omitempty"`
+}
+
+func (r *Repo) Auth() transport.AuthMethod {
+	if r.Username != "" && r.Password != "" {
+		return &http.BasicAuth{
+			Username: r.Username,
+			Password: r.Password,
+		}
+	}
+	if len(r.SshPrivateKey) > 0 {
+		authMethod, err := ssh.NewPublicKeys("git", r.SshPrivateKey, r.SshPassphrase)
+		if err != nil {
+			return nil
+		}
+		return authMethod
+	}
+	return nil
 }

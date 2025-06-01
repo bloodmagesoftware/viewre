@@ -16,12 +16,69 @@
 
 package view
 
-import "fmt"
+import (
+	"fmt"
+	"viewre/internal/db"
+	"viewre/internal/repository"
+	"github.com/go-git/go-git/v5/plumbing/format/diff"
+)
 
 templ Compare() {
-	@Layout("Compare", "p-2 md:px-0 md:max-w-2xl md:mx-auto") {
-		<h1 class="text-4xl font-bold mb-8">Compare</h1>
-		<p>{ fmt.Sprintf("a: %s",ctx.Value("a")) }</p>
-		<p>{ fmt.Sprintf("b: %s",ctx.Value("b")) }</p>
+	@Layout("Compare") {
+		<div class="p-2 md:px-0 md:max-w-2xl md:mx-auto">
+			<h1 class="text-4xl font-bold mb-8">Compare</h1>
+			<p>{ fmt.Sprintf("repo: %s",ctx.Value("repo")) }</p>
+			<p>{ fmt.Sprintf("a: %s",ctx.Value("a")) }</p>
+			<p>{ fmt.Sprintf("b: %s",ctx.Value("b")) }</p>
+		</div>
+		if repo, ok := db.Repos.Get(ctx.Value("repo").(string)); !ok {
+			<p>Repo not found</p>
+		} else {
+			if patch, err := repository.Diff(ctx, repo, ctx.Value("a").(string), ctx.Value("b").(string)); err != nil {
+				<p class="text-red-700">{ err.Error() }</p>
+			} else {
+				if len(patch.Message()) > 0 {
+					<p>{ patch.Message() }</p>
+				}
+				if patch.FilePatches() != nil {
+					for _, patch := range patch.FilePatches() {
+						{{ from, to := patch.Files() }}
+						<details class="block py-2 px-4 border-b border-gray-800">
+							<summary class="cursor-pointer">
+								<p class="inline-block font-bold text-white">
+									{ fmt.Sprintf("diff --git i/%s w/%s",from.Path(), to.Path()) }
+								</p>
+								<p>
+									{ fmt.Sprintf(
+                                    "index %.7s..%.7s %s",
+                                    from.Hash().String(), to.Hash().String(), from.Mode().String(),
+                                    ) }
+								</p>
+								<p>
+									{ fmt.Sprintf("--- i/%s",from.Path()) }
+								</p>
+								<p>
+									{ fmt.Sprintf("+++ w/%s",to.Path()) }
+								</p>
+							</summary>
+							if patch.IsBinary() {
+								<p>Binary file</p>
+							} else {
+								for _, chunk := range patch.Chunks() {
+									switch chunk.Type() {
+										case diff.Delete:
+											<p class="text-red-500 whitespace-pre">-{ chunk.Content() }</p>
+										case diff.Equal:
+											<p class="text-neutral.500 whitespace-pre">
+												@Code(chunk.Content(), "go")
+											</p>
+									}
+								}
+							}
+						</details>
+					}
+				}
+			}
+		}
 	}
 }

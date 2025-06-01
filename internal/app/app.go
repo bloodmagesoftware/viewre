@@ -25,14 +25,11 @@ import (
 	"time"
 	"viewre/internal/config"
 	"viewre/internal/web"
-
-	"github.com/go-webauthn/webauthn/webauthn"
 )
 
 var (
 	listener *net.TCPListener
 	server   *http.Server
-	WebAuthn *webauthn.WebAuthn
 )
 
 func Start() error {
@@ -49,16 +46,6 @@ func Start() error {
 
 	if err := server.Serve(ln); err != nil {
 		return errors.Join(fmt.Errorf("serving %s", server.Addr), err)
-	}
-
-	if webAuthn, err := webauthn.New(&webauthn.Config{
-		RPDisplayName: "ViewRe",
-		RPID:          config.Origin,
-		RPOrigins:     []string{config.Url},
-	}); err != nil {
-		return errors.Join(fmt.Errorf("creating webauthn"), err)
-	} else {
-		WebAuthn = webAuthn
 	}
 
 	return nil

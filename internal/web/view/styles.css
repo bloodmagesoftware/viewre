@@ -18,6 +18,22 @@
 
 @import "tailwindcss";
 
+:root,
+body {
+  @apply overflow-x-clip;
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("/_static/JetBrainsMono-Regular.woff2") format("woff2");
+  font-weight: normal;
+  font-style: normal;
+}
+
+.font-mono {
+  font-family: "JetBrains Mono", monospace;
+}
+
 @layer base {
   .btn {
     @apply rounded-md bg-blue-600 px-4 py-2 text-blue-50 font-bold cursor-pointer hover:bg-blue-700;
@@ -32,5 +48,9 @@
   input.textarea,
   label.input > textarea {
     @apply block bg-stone-900 text-stone-50 border-stone-700 border-2 rounded-md px-4 py-2 my-2 resize-none w-full;
+  }
+
+  .ts-node:hover {
+    @apply drop-shadow-md drop-shadow-current outline outline-current outline-dashed;
   }
 }
