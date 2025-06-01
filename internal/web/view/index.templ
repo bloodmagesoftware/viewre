@@ -22,7 +22,7 @@ import (
 )
 
 templ Index() {
-	@Layout("ViewRe", "p-2 md:px-0 md:max-w-2xl md:mx-auto") {
+	@Layout("ViewRe") {
 		<h1 class="text-4xl font-bold mb-8">Repos</h1>
 		if ctx.Value("logged_in").(bool) {
 			for _, repo := range db.Repos.Iterate {

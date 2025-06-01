@@ -17,7 +17,7 @@
 package view
 
 templ Profile() {
-	@Layout("Profile", "p-2 md:px-0 md:max-w-2xl md:mx-auto") {
+	@Layout("Profile") {
 		<h1 class="text-4xl font-bold mb-8">Profile</h1>
 		if ctx.Value("logged_in").(bool) {
 			<p>Name: { ctx.Value("name").(string) }</p>

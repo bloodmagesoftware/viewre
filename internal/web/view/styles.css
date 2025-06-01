@@ -53,4 +53,18 @@ body {
   .ts-node:hover {
     @apply drop-shadow-md drop-shadow-current outline outline-current outline-dashed;
   }
+
+  .chunk {
+    @apply whitespace-pre font-mono;
+  }
+  .chunk--add {
+    @apply bg-green-900;
+  }
+  .chunk--delete {
+    @apply bg-red-900;
+  }
+  .chunk--add,
+  .chunk--delete {
+    @apply w-1/2 inline-block overflow-x-clip;
+  }
 }

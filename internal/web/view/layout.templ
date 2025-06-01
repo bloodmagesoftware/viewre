@@ -16,9 +16,7 @@
 
 package view
 
-import "strings"
-
-templ Layout(title string, class ...string) {
+templ Layout(title string) {
 	<!DOCTYPE html>
 	<html lang="de" class="bg-ctp-base accent-accent">
 		<head>
@@ -53,7 +51,7 @@ templ Layout(title string, class ...string) {
 					>Login</a>
 				}
 			</header>
-			<main class={ strings.Join(class, " ") }>
+			<main class="mx-1 md:mx-2">
 				{ children... }
 			</main>
 		</body>

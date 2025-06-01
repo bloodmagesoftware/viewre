@@ -19,7 +19,7 @@ package view
 import "viewre/internal/db"
 
 templ Admin() {
-	@Layout("Admin", "p-2 md:px-0 md:max-w-2xl md:mx-auto") {
+	@Layout("Admin") {
 		<h1 class="text-4xl font-bold mb-2">Admin</h1>
 		<h2 class="text-2xl font-bold mb-2">Users</h2>
 		for id, user := range db.Users.Iterate {
