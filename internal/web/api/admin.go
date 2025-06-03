@@ -23,6 +23,7 @@ import (
 )
 
 func AdminEnableUserHandler(w http.ResponseWriter, r *http.Request) {
+	noCache(w)
 	userId := r.URL.Query().Get("id")
 	if userId == "" {
 		http.Error(w, "No user id provided", http.StatusBadRequest)
@@ -47,6 +48,7 @@ func encodeSshKey(key string) []byte {
 }
 
 func AdminRepoHandler(w http.ResponseWriter, r *http.Request) {
+	noCache(w)
 	switch r.Method {
 	case "DELETE":
 		repoName := r.URL.Query().Get("name")

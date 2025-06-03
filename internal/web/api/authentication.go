@@ -25,6 +25,7 @@ import (
 )
 
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
+	noCache(w)
 	q := r.URL.Query()
 	if q.Has("target") {
 		state := q.Get("target")
@@ -38,6 +39,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func CallbackHandler(w http.ResponseWriter, r *http.Request) {
+	noCache(w)
 	code := r.URL.Query().Get("code")
 	token, err := auth.OAuth2Config.Exchange(context.Background(), code)
 	if err != nil {

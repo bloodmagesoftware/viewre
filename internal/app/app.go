@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"os"
 	"time"
 	"viewre/internal/config"
 	"viewre/internal/web"
@@ -32,10 +33,12 @@ var (
 	server   *http.Server
 )
 
-func Start() error {
+func Start() {
 	ln, err := net.Listen("tcp", config.Address)
 	if err != nil {
-		return errors.Join(fmt.Errorf("listening to %s", config.Address), err)
+		fmt.Fprintln(os.Stderr, errors.Join(fmt.Errorf("listening to %s", config.Address), err))
+		os.Exit(1)
+		return
 	}
 	listener = ln.(*net.TCPListener)
 
@@ -45,10 +48,9 @@ func Start() error {
 	}
 
 	if err := server.Serve(ln); err != nil {
-		return errors.Join(fmt.Errorf("serving %s", server.Addr), err)
+		fmt.Fprintln(os.Stderr, (errors.Join(fmt.Errorf("serving %s", server.Addr), err)))
+		return
 	}
-
-	return nil
 }
 
 func Stop() {

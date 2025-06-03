@@ -5,9 +5,10 @@ go 1.24.3
 require (
 	github.com/a-h/templ v0.3.887
 	github.com/auth0/go-auth0 v1.22.0
-	github.com/bloodmagesoftware/speicher v1.1.1
+	github.com/bloodmagesoftware/speicher v1.1.2
 	github.com/coreos/go-oidc/v3 v3.14.1
 	github.com/go-git/go-git/v5 v5.16.0
+	github.com/gomarkdown/markdown v0.0.0-20250311123330-531bef5e742b
 	github.com/gorilla/sessions v1.4.0
 	github.com/tree-sitter-grammars/tree-sitter-markdown v0.5.0
 	github.com/tree-sitter/go-tree-sitter v0.25.0

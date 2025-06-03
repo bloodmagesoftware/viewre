@@ -82,6 +82,13 @@ body {
   }
   .chunk--add,
   .chunk--delete {
-    @apply min-w-fit rounded-sm;
+    min-width: calc(100% - 4rem);
+    @apply rounded-sm w-fit;
+  }
+  .chunk--space {
+    min-width: calc(100% - 4rem);
+    user-select: none;
+    pointer-events: none;
+    @apply bg-stone-800 text-stone-50 rounded-md;
   }
 }

@@ -28,7 +28,7 @@ import (
 
 func NewServer() http.Handler {
 	mux := http.NewServeMux()
-	mux.Handle("/_static/", http.StripPrefix("/_static/", http.FileServer(http.FS(view.StaticFiles))))
+	mux.HandleFunc("/_static/", view.StaticFileHandler)
 	mux.HandleFunc("/", IndexTemplHandler(view.Index()))
 	mux.HandleFunc("/compare/{repo}/{a}/{b}", RequireActiveLogin(TemplHandler(view.Compare())))
 	mux.HandleFunc("/profile", RequireLogin(TemplHandler(view.Profile())))
@@ -37,6 +37,7 @@ func NewServer() http.Handler {
 	mux.HandleFunc("/auth/callback", api.CallbackHandler)
 	mux.HandleFunc("/admin/enable-user", RequireActiveLogin(api.AdminEnableUserHandler))
 	mux.HandleFunc("/admin/repo", RequireActiveLogin(api.AdminRepoHandler))
+	mux.HandleFunc("/api/lsp/hover/{repo}/{commit}/{file}/{index}", api.LspHoverHandler)
 	return mux
 }
 
@@ -72,6 +73,8 @@ func RequireLogin(next http.HandlerFunc) http.HandlerFunc {
 
 func TemplHandler(templComponent templ.Component) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		ctx := context.FromRequest(r)
 		if err := templComponent.Render(ctx, w); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -86,6 +89,8 @@ func IndexTemplHandler(templComponent templ.Component) http.HandlerFunc {
 			http.NotFound(w, r)
 			return
 		}
+		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		ctx := context.FromRequest(r)
 		if err := templComponent.Render(ctx, w); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)

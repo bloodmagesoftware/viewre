@@ -26,3 +26,7 @@ func JSONResponse(w http.ResponseWriter, data any, status int) {
 	w.WriteHeader(status)
 	json.NewEncoder(w).Encode(data)
 }
+
+func noCache(w http.ResponseWriter) {
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+}

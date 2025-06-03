@@ -31,28 +31,25 @@ templ Compare() {
 		if repo, ok := db.Repos.Get(ctx.Value("repo").(string)); !ok {
 			<p>Repo not found</p>
 		} else {
-			if patch, err := repository.Diff(ctx, repo, ctx.Value("a").(string), ctx.Value("b").(string)); err != nil {
+			if a, b, patch, err := repository.Diff(ctx, repo, ctx.Value("a").(string), ctx.Value("b").(string)); err != nil {
 				<p class="text-red-700">{ err.Error() }</p>
 			} else {
 				if len(patch.Message()) > 0 {
 					<p>{ patch.Message() }</p>
 				}
 				if patch.FilePatches() != nil {
-					for _, patch := range patch.FilePatches() {
-						{{ headerHtml, bodyHtml := Patch(patch) }}
+					for _, fpatch := range patch.FilePatches() {
+						{{ headerHtml, bodyHtml := Patch(a, b, fpatch) }}
 						<details class="block py-2 border-b border-gray-800">
 							<summary class="cursor-pointer">
 								@templ.Raw(headerHtml)
 							</summary>
-							if patch.IsBinary() {
-								<p>Binary file</p>
-							} else {
-								@templ.Raw(bodyHtml)
-							}
+							@templ.Raw(bodyHtml)
 						</details>
 					}
 				}
 			}
 		}
+		<script src={ staticUrl("compare.js") }></script>
 	}
 }

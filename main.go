@@ -17,16 +17,20 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
 	"viewre/internal/app"
+	"viewre/internal/lsp"
 )
 
 func main() {
+	fmt.Println("ViewRe")
 	go app.Start()
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGHUP)
 	<-c
 	app.Stop()
+	lsp.StopAll()
 }

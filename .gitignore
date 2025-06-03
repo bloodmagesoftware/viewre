@@ -4,6 +4,7 @@ node_modules
 /data/
 /viewre
 *.min.css
-*.min.js
+*.js
+*.map
 *_templ.go
 .env

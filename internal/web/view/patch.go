@@ -60,17 +60,17 @@ func parse(code string, lang string, oldTree *tree_sitter.Tree) (*tree_sitter.Tr
 	return tree, nil
 }
 
-func Patch(patch diff.FilePatch) (header string, body string) {
-	if patch == nil {
+func Patch(a, b string, filePatch diff.FilePatch) (header string, body string) {
+	if filePatch == nil {
 		return
 	}
-	from, to := patch.Files()
+	from, to := filePatch.Files()
 	if from == nil {
-		header = fmt.Sprintf("from is nil %v", patch)
+		header = fmt.Sprintf("from is nil %v", filePatch)
 		return
 	}
 	if to == nil {
-		header = fmt.Sprintf("to is nil %v", patch)
+		header = fmt.Sprintf("to is nil %v", filePatch)
 		return
 	}
 	headerBuilder := strings.Builder{}
@@ -87,7 +87,7 @@ func Patch(patch diff.FilePatch) (header string, body string) {
 
 	fromFullContentBuilder := strings.Builder{}
 	toFullContentBuilder := strings.Builder{}
-	for _, chunk := range patch.Chunks() {
+	for _, chunk := range filePatch.Chunks() {
 		switch chunk.Type() {
 		case diff.Equal:
 			fromFullContentBuilder.WriteString(chunk.Content())
@@ -133,7 +133,7 @@ func Patch(patch diff.FilePatch) (header string, body string) {
 	leftDiff := 0
 	rightDiff := 0
 
-	for _, chunk := range patch.Chunks() {
+	for _, chunk := range filePatch.Chunks() {
 		chunkLength := uint(len([]byte(chunk.Content())))
 
 		switch chunk.Type() {
@@ -146,49 +146,24 @@ func Patch(patch diff.FilePatch) (header string, body string) {
 			}
 			leftDiff = 0
 			rightDiff = 0
-			rendered := render(toSegments, toOffset, toOffset+chunkLength, []byte(toFullContent))
-			bodyLeftBuilder.WriteString(
-				fmt.Sprintf(
-					`<div data-start="%d" data-end="%d" class="chunk chunk--left chunk--equal">`,
-					toOffset,
-					toOffset+chunkLength,
-				),
-			)
-			bodyLeftBuilder.WriteString(rendered)
+			bodyLeftBuilder.WriteString(`<div class="chunk chunk--left chunk--equal">`)
+			bodyLeftBuilder.WriteString(render(fromSegments, fromOffset, fromOffset+chunkLength, []byte(fromFullContent)))
 			bodyLeftBuilder.WriteString(`</div>`)
-			bodyRightBuilder.WriteString(
-				fmt.Sprintf(
-					`<div data-start="%d" data-end="%d" class="chunk chunk--equal">`,
-					toOffset,
-					toOffset+chunkLength,
-				),
-			)
-			bodyRightBuilder.WriteString(rendered)
+			bodyRightBuilder.WriteString(`<div class="chunk chunk--equal">`)
+			bodyRightBuilder.WriteString(render(toSegments, toOffset, toOffset+chunkLength, []byte(toFullContent)))
 			bodyRightBuilder.WriteString(`</div>`)
 			fromOffset += chunkLength
 			toOffset += chunkLength
 
 		case diff.Add:
-			bodyRightBuilder.WriteString(
-				fmt.Sprintf(
-					`<div data-start="%d" data-end="%d" class="chunk chunk--add">`,
-					toOffset,
-					toOffset+chunkLength,
-				),
-			)
+			bodyRightBuilder.WriteString(`<div class="chunk chunk--add">`)
 			bodyRightBuilder.WriteString(render(toSegments, toOffset, toOffset+chunkLength, []byte(toFullContent)))
 			bodyRightBuilder.WriteString(`</div>`)
 			toOffset += chunkLength
 			rightDiff = countLineBreaks(chunk.Content())
 
 		case diff.Delete:
-			bodyLeftBuilder.WriteString(
-				fmt.Sprintf(
-					`<div data-start="%d" data-end="%d" class="chunk chunk--delete">`,
-					toOffset,
-					toOffset+chunkLength,
-				),
-			)
+			bodyLeftBuilder.WriteString(`<div class="chunk chunk--delete">`)
 			bodyLeftBuilder.WriteString(render(fromSegments, fromOffset, fromOffset+chunkLength, []byte(fromFullContent)))
 			bodyLeftBuilder.WriteString(`</div>`)
 			fromOffset += chunkLength
@@ -196,7 +171,15 @@ func Patch(patch diff.FilePatch) (header string, body string) {
 		}
 	}
 
-	body = fmt.Sprintf(`<div class="diff"><div class="diff__left">%s</div><div class="diff__right">%s</div></div>`, bodyLeftBuilder.String(), bodyRightBuilder.String())
+	body = fmt.Sprintf(
+		`<div class="diff"><div class="diff__left" data-file="%s" data-commit="%s">%s</div><div class="diff__right" data-file="%s" data-commit="%s">%s</div></div>`,
+		from.Path(),
+		a,
+		bodyLeftBuilder.String(),
+		to.Path(),
+		b,
+		bodyRightBuilder.String(),
+	)
 
 	return
 }
@@ -222,7 +205,7 @@ type syntaxSpan struct {
 
 func getNodeClass(nodeType string) (string, bool) {
 	switch nodeType {
-	case "comment", "line_comment", "block_comment":
+	case "comment", "line_comment", "block_comment", "//", "shebang":
 		return "text-neutral-400", true
 
 	case "string", "string_content", "string_fragment", "string_literal", "raw_string_literal", "interpreted_string_literal", "interpreted_string_literal_content", "\"", "'", "`", "fenced_code_block_delimiter":
@@ -231,7 +214,7 @@ func getNodeClass(nodeType string) (string, bool) {
 	case "escape_sequence":
 		return "text-lime-400", true
 
-	case "number", "int", "float", "int_literal", "float_literal", "rune_literal", "chan", "decimal_integer_literal", "hex_integer_literal", "octal_integer_literal", "binary_integer_literal":
+	case "number", "int", "float", "int_literal", "integer_literal", "float_literal", "rune_literal", "chan", "decimal_integer_literal", "hex_integer_literal", "octal_integer_literal", "binary_integer_literal":
 		return "text-amber-400", true
 
 	case "field_identifier":
@@ -249,13 +232,13 @@ func getNodeClass(nodeType string) (string, bool) {
 	case "export":
 		return "text-cyan-400", true
 
-	case "import", "from", "as", "require", "package", "class", "interface", "enum", "type", "function", "fn", "fun", "func", "go", "var", "let", "const", "async", "await", "break", "case", "catch", "continue", "debugger", "default", "delete", "do", "else", "finally", "for", "if", "in", "instanceof", "new", "return", "switch", "this", "throw", "try", "typeof", "void", "while", "with", "yield", "private", "public", "protected", "internal":
+	case "import", "from", "as", "require", "package", "class", "interface", "enum", "type", "function", "fn", "fun", "func", "go", "var", "let", "const", "async", "await", "break", "case", "catch", "continue", "debugger", "default", "delete", "do", "else", "finally", "for", "if", "in", "instanceof", "new", "return", "switch", "this", "throw", "try", "typeof", "void", "while", "with", "yield", "private", "public", "protected", "internal", "pub", "use", "mod", "mut":
 		return "text-indigo-400", true
 
 	case "operator", ":=", "=", "+", "-", "*", "/", "%", "==", "!=", "===", "!==", "=>", "==>", "<-", "->", "<<", ">>", "<", ">", "<=", ">=", "&&", "||", "!", "|", "&", "$":
 		return "text-cyan-400", true
 
-	case "punctuation", "{", "}", "(", ")", "[", "]", ";", "?", ":", ",", ".", "atx_h1_marker", "atx_h2_marker", "atx_h3_marker", "atx_h4_marker", "atx_h5_marker", "atx_h6_marker":
+	case "punctuation", "{", "}", "(", ")", "[", "]", ";", "?", ":", ",", ".", "..", "::", "#", "atx_h1_marker", "atx_h2_marker", "atx_h3_marker", "atx_h4_marker", "atx_h5_marker", "atx_h6_marker":
 		return "text-gray-400", true
 
 	default:
@@ -275,7 +258,7 @@ func collectSpans(tree *tree_sitter.Tree) []syntaxSpan {
 		if n.ChildCount() == 0 {
 			class, ok := getNodeClass(n.Kind())
 			if !ok {
-				class, ok = getNodeClass(n.GrammarName())
+				class, _ = getNodeClass(n.GrammarName())
 			}
 			class += " ts-node"
 			spans = append(spans, syntaxSpan{
@@ -367,16 +350,20 @@ func render(segments []highlightedSegment, windowStart uint, windowEnd uint, cod
 	chunkBuilder := strings.Builder{}
 
 	for _, segment := range segments {
-		// skip completely out of this chunk
 		if segment.end < windowStart || segment.start > windowEnd {
 			continue
 		}
-		// clip to [start,end]
 		s := max(segment.start, windowStart)
 		e := min(segment.end, windowEnd)
 		slice := code[s:e]
 
-		chunkBuilder.WriteString(fmt.Sprintf(`<span class="%s" data-start="%d" data-end="%d" data-kind="%s" data-grammarname="%s">%s</span>`, segment.class, s, e, html.EscapeString(segment.kind), html.EscapeString(segment.grammarname), html.EscapeString(string(slice))))
+		chunkBuilder.WriteString(fmt.Sprintf(
+			`<span class="%s" data-start="%d" data-end="%d">%s</span>`,
+			segment.class,
+			s,
+			e,
+			html.EscapeString(string(slice)),
+		))
 	}
 
 	return chunkBuilder.String()
