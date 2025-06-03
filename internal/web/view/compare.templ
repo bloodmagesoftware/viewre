@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"viewre/internal/db"
 	"viewre/internal/repository"
+	"viewre/internal/tree_sitter"
 )
 
 templ Compare() {
@@ -39,7 +40,7 @@ templ Compare() {
 				}
 				if patch.FilePatches() != nil {
 					for _, fpatch := range patch.FilePatches() {
-						{{ headerHtml, bodyHtml := Patch(a, b, fpatch) }}
+						{{ headerHtml, bodyHtml := tree_sitter.Patch(a, b, fpatch) }}
 						<details class="block py-2 border-b border-gray-800">
 							<summary class="cursor-pointer">
 								@templ.Raw(headerHtml)

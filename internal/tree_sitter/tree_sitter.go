@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-package view
+package tree_sitter
 
 import (
 	"fmt"
@@ -25,28 +25,52 @@ import (
 
 	tree_sitter_markdown "github.com/tree-sitter-grammars/tree-sitter-markdown/bindings/go"
 	tree_sitter "github.com/tree-sitter/go-tree-sitter"
+	tree_sitter_cs "github.com/tree-sitter/tree-sitter-c-sharp/bindings/go"
+	tree_sitter_c "github.com/tree-sitter/tree-sitter-c/bindings/go"
+	tree_sitter_cpp "github.com/tree-sitter/tree-sitter-cpp/bindings/go"
+	tree_sitter_css "github.com/tree-sitter/tree-sitter-css/bindings/go"
+	tree_sitter_embedded_template "github.com/tree-sitter/tree-sitter-embedded-template/bindings/go"
 	tree_sitter_go "github.com/tree-sitter/tree-sitter-go/bindings/go"
+	tree_sitter_haskell "github.com/tree-sitter/tree-sitter-haskell/bindings/go"
+	tree_sitter_html "github.com/tree-sitter/tree-sitter-html/bindings/go"
 	tree_sitter_java "github.com/tree-sitter/tree-sitter-java/bindings/go"
 	tree_sitter_javascript "github.com/tree-sitter/tree-sitter-javascript/bindings/go"
 	tree_sitter_json "github.com/tree-sitter/tree-sitter-json/bindings/go"
+	tree_sitter_ocaml "github.com/tree-sitter/tree-sitter-ocaml/bindings/go"
+	tree_sitter_php "github.com/tree-sitter/tree-sitter-php/bindings/go"
+	tree_sitter_python "github.com/tree-sitter/tree-sitter-python/bindings/go"
+	tree_sitter_ruby "github.com/tree-sitter/tree-sitter-ruby/bindings/go"
 	tree_sitter_rust "github.com/tree-sitter/tree-sitter-rust/bindings/go"
 	tree_sitter_typescript "github.com/tree-sitter/tree-sitter-typescript/bindings/go"
+	tree_sitter_editorconfig "github.com/valdezfomar/tree-sitter-editorconfig/bindings/go"
 
 	"github.com/go-git/go-git/v5/plumbing/format/diff"
 )
 
 var languages = map[string]*tree_sitter.Language{
-	"md":   tree_sitter.NewLanguage(tree_sitter_markdown.Language()),
-	"go":   tree_sitter.NewLanguage(tree_sitter_go.Language()),
-	"java": tree_sitter.NewLanguage(tree_sitter_java.Language()),
-	"js":   tree_sitter.NewLanguage(tree_sitter_javascript.Language()),
-	"json": tree_sitter.NewLanguage(tree_sitter_json.Language()),
-	"rs":   tree_sitter.NewLanguage(tree_sitter_rust.Language()),
-	"ts":   tree_sitter.NewLanguage(tree_sitter_typescript.LanguageTypescript()),
-	"tsx":  tree_sitter.NewLanguage(tree_sitter_typescript.LanguageTSX()),
+	"md":           tree_sitter.NewLanguage(tree_sitter_markdown.Language()),
+	"cs":           tree_sitter.NewLanguage(tree_sitter_cs.Language()),
+	"c":            tree_sitter.NewLanguage(tree_sitter_c.Language()),
+	"cpp":          tree_sitter.NewLanguage(tree_sitter_cpp.Language()),
+	"css":          tree_sitter.NewLanguage(tree_sitter_css.Language()),
+	"erb":          tree_sitter.NewLanguage(tree_sitter_embedded_template.Language()),
+	"go":           tree_sitter.NewLanguage(tree_sitter_go.Language()),
+	"hs":           tree_sitter.NewLanguage(tree_sitter_haskell.Language()),
+	"html":         tree_sitter.NewLanguage(tree_sitter_html.Language()),
+	"java":         tree_sitter.NewLanguage(tree_sitter_java.Language()),
+	"js":           tree_sitter.NewLanguage(tree_sitter_javascript.Language()),
+	"json":         tree_sitter.NewLanguage(tree_sitter_json.Language()),
+	"ocaml":        tree_sitter.NewLanguage(tree_sitter_ocaml.LanguageOCaml()),
+	"php":          tree_sitter.NewLanguage(tree_sitter_php.LanguagePHP()),
+	"py":           tree_sitter.NewLanguage(tree_sitter_python.Language()),
+	"rs":           tree_sitter.NewLanguage(tree_sitter_rust.Language()),
+	"rb":           tree_sitter.NewLanguage(tree_sitter_ruby.Language()),
+	"ts":           tree_sitter.NewLanguage(tree_sitter_typescript.LanguageTypescript()),
+	"tsx":          tree_sitter.NewLanguage(tree_sitter_typescript.LanguageTSX()),
+	"editorconfig": tree_sitter.NewLanguage(tree_sitter_editorconfig.Language()),
 }
 
-func parse(code string, lang string, oldTree *tree_sitter.Tree) (*tree_sitter.Tree, error) {
+func parse(code []byte, lang string, oldTree *tree_sitter.Tree) (*tree_sitter.Tree, error) {
 	parser := tree_sitter.NewParser()
 	defer parser.Close()
 	if tsLang, ok := languages[lang]; !ok {
@@ -56,7 +80,7 @@ func parse(code string, lang string, oldTree *tree_sitter.Tree) (*tree_sitter.Tr
 			return nil, err
 		}
 	}
-	tree := parser.Parse([]byte(code), oldTree)
+	tree := parser.Parse(code, oldTree)
 	return tree, nil
 }
 
@@ -98,29 +122,30 @@ func Patch(a, b string, filePatch diff.FilePatch) (header string, body string) {
 			fromFullContentBuilder.WriteString(chunk.Content())
 		}
 	}
-	fromFullContent := fromFullContentBuilder.String()
-	toFullContent := toFullContentBuilder.String()
 
-	fromExt := filepath.Ext(from.Path())
-	toExt := filepath.Ext(to.Path())
+	fromCode := []byte(fromFullContentBuilder.String())
+	toCode := []byte(toFullContentBuilder.String())
 
-	fromTree, err := parse(fromFullContent, extToLang(fromExt), nil)
+	fromLang := extToLang(filepath.Ext(from.Path()))
+	toLang := extToLang(filepath.Ext(to.Path()))
+
+	fromTree, err := parse(fromCode, fromLang, nil)
 	if err != nil {
 		fromTree = nil
 	}
 
 	fromSegments := renderWithHighlighting(
-		[]byte(fromFullContent),
+		fromCode,
 		collectSpans(fromTree),
 	)
 
-	toTree, err := parse(toFullContent, extToLang(toExt), nil)
+	toTree, err := parse(toCode, toLang, nil)
 	if err != nil {
 		toTree = nil
 	}
 
 	toSegments := renderWithHighlighting(
-		[]byte(toFullContent),
+		toCode,
 		collectSpans(toTree),
 	)
 
@@ -147,24 +172,24 @@ func Patch(a, b string, filePatch diff.FilePatch) (header string, body string) {
 			leftDiff = 0
 			rightDiff = 0
 			bodyLeftBuilder.WriteString(`<div class="chunk chunk--left chunk--equal">`)
-			bodyLeftBuilder.WriteString(render(fromSegments, fromOffset, fromOffset+chunkLength, []byte(fromFullContent)))
+			bodyLeftBuilder.WriteString(render(fromSegments, fromOffset, fromOffset+chunkLength, fromCode))
 			bodyLeftBuilder.WriteString(`</div>`)
 			bodyRightBuilder.WriteString(`<div class="chunk chunk--equal">`)
-			bodyRightBuilder.WriteString(render(toSegments, toOffset, toOffset+chunkLength, []byte(toFullContent)))
+			bodyRightBuilder.WriteString(render(toSegments, toOffset, toOffset+chunkLength, toCode))
 			bodyRightBuilder.WriteString(`</div>`)
 			fromOffset += chunkLength
 			toOffset += chunkLength
 
 		case diff.Add:
 			bodyRightBuilder.WriteString(`<div class="chunk chunk--add">`)
-			bodyRightBuilder.WriteString(render(toSegments, toOffset, toOffset+chunkLength, []byte(toFullContent)))
+			bodyRightBuilder.WriteString(render(toSegments, toOffset, toOffset+chunkLength, toCode))
 			bodyRightBuilder.WriteString(`</div>`)
 			toOffset += chunkLength
 			rightDiff = countLineBreaks(chunk.Content())
 
 		case diff.Delete:
 			bodyLeftBuilder.WriteString(`<div class="chunk chunk--delete">`)
-			bodyLeftBuilder.WriteString(render(fromSegments, fromOffset, fromOffset+chunkLength, []byte(fromFullContent)))
+			bodyLeftBuilder.WriteString(render(fromSegments, fromOffset, fromOffset+chunkLength, fromCode))
 			bodyLeftBuilder.WriteString(`</div>`)
 			fromOffset += chunkLength
 			leftDiff = countLineBreaks(chunk.Content())
@@ -184,17 +209,6 @@ func Patch(a, b string, filePatch diff.FilePatch) (header string, body string) {
 	return
 }
 
-func extToLang(ext string) string {
-	lang := strings.TrimPrefix(ext, ".")
-	switch lang {
-	case "jsx":
-		return "js"
-	case "json5", "jsonc":
-		return "json"
-	}
-	return lang
-}
-
 type syntaxSpan struct {
 	start       uint
 	end         uint
@@ -208,13 +222,19 @@ func getNodeClass(nodeType string) (string, bool) {
 	case "comment", "line_comment", "block_comment", "//", "shebang":
 		return "text-neutral-400", true
 
-	case "string", "string_content", "string_fragment", "string_literal", "raw_string_literal", "interpreted_string_literal", "interpreted_string_literal_content", "\"", "'", "`", "fenced_code_block_delimiter":
+	case "string", "string_content", "string_fragment", "string_literal_content", "string_literal", "raw_string_literal", "interpreted_string_literal", "interpreted_string_literal_content", "\"", "'", "`", "fenced_code_block_delimiter", "indented_code_block", "fenced_code_block", "link_title":
 		return "text-green-400", true
 
-	case "escape_sequence":
+	case "link_destination", "link_label":
+		return "text-blue-400 underline", true
+
+	case "escape_sequence", "backslash_escape":
 		return "text-lime-400", true
 
-	case "number", "int", "float", "int_literal", "integer_literal", "float_literal", "rune_literal", "chan", "decimal_integer_literal", "hex_integer_literal", "octal_integer_literal", "binary_integer_literal":
+	case "block_continuation", "block_quote_marker":
+		return "text-emerald-400", true
+
+	case "number", "int", "float", "int_literal", "integer_literal", "float_literal", "rune_literal", "chan", "decimal_integer_literal", "hex_integer_literal", "octal_integer_literal", "binary_integer_literal", "true", "false":
 		return "text-amber-400", true
 
 	case "field_identifier":
@@ -228,22 +248,61 @@ func getNodeClass(nodeType string) (string, bool) {
 
 	case "type_identifier", "language", "void_type":
 		return "text-yellow-400", true
+	case "predefined_type":
+		return "text-amber-400", true
 
 	case "export":
 		return "text-cyan-400", true
 
-	case "import", "from", "as", "require", "package", "class", "interface", "enum", "type", "function", "fn", "fun", "func", "go", "var", "let", "const", "async", "await", "break", "case", "catch", "continue", "debugger", "default", "delete", "do", "else", "finally", "for", "if", "in", "instanceof", "new", "return", "switch", "this", "throw", "try", "typeof", "void", "while", "with", "yield", "private", "public", "protected", "internal", "pub", "use", "mod", "mut":
+	case "import", "from", "as", "require", "package", "class", "interface", "enum", "type", "function", "fn", "fun", "func", "go", "var", "let", "const", "async", "await", "break", "case", "catch", "continue", "debugger", "default", "delete", "do", "else", "finally", "for", "if", "in", "instanceof", "new", "return", "switch", "this", "throw", "try", "typeof", "void", "while", "with", "yield", "private", "public", "protected", "internal", "pub", "use", "mod", "mut", "satisfies", "override", "readonly", "namespace", "keyof", "implements", "abstract", "declare", "using", "static":
 		return "text-indigo-400", true
 
-	case "operator", ":=", "=", "+", "-", "*", "/", "%", "==", "!=", "===", "!==", "=>", "==>", "<-", "->", "<<", ">>", "<", ">", "<=", ">=", "&&", "||", "!", "|", "&", "$":
+	case "assembly", "get", "set":
+		return "text-purple-400", true
+
+	case "operator", ":=", "=", "+", "-", "~", "*", "/", "%", "==", "!=", "===", "!==", "=>", "==>", "<-", "->", "<<", ">>", "<", ">", "<=", ">=", "&&", "||", "!", "|", "&", "$":
 		return "text-cyan-400", true
 
-	case "punctuation", "{", "}", "(", ")", "[", "]", ";", "?", ":", ",", ".", "..", "::", "#", "atx_h1_marker", "atx_h2_marker", "atx_h3_marker", "atx_h4_marker", "atx_h5_marker", "atx_h6_marker":
+	case "#if", "#else", "#elif", "#endif", "#ifdef", "#ifndef", "#include":
+		return "text-rose-400", true
+
+	case "list_marker_plus", "list_marker_minus", "list_marker_star", "list_marker_dot", "list_marker_parenthesis", "thematic_break":
+		return "text-red-300", true
+
+	case "punctuation", "(", ")", "[", "]", "{", "}", ";", "?", ":", ",", ".", "..", "::", "#", "atx_h1_marker", "atx_h2_marker", "atx_h3_marker", "atx_h4_marker", "atx_h5_marker", "atx_h6_marker", "setext_h1_underline", "setext_h2_underline":
 		return "text-gray-400", true
 
 	default:
 		return "text-white", false
 	}
+}
+
+func getRainbowBracketClass(index int) string {
+	switch index % 11 {
+	case 0:
+		return "text-yellow-300"
+	case 1:
+		return "text-green-300"
+	case 2:
+		return "text-cyan-300"
+	case 3:
+		return "text-violet-300"
+	case 4:
+		return "text-orange-300"
+	case 5:
+		return "text-lime-300"
+	case 6:
+		return "text-blue-300"
+	case 7:
+		return "text-red-300"
+	case 8:
+		return "text-teal-300"
+	case 9:
+		return "text-fuchsia-300"
+	case 10:
+		return "text-lime-300"
+	}
+	return "text-gray-300"
 }
 
 func collectSpans(tree *tree_sitter.Tree) []syntaxSpan {
@@ -281,6 +340,21 @@ func collectSpans(tree *tree_sitter.Tree) []syntaxSpan {
 	sort.Slice(spans, func(i, j int) bool {
 		return spans[i].start < spans[j].start
 	})
+
+	rainbowBrackets := 0
+
+	for i, span := range spans {
+		switch span.kind {
+		case "(", "[", "{":
+			span.class = getRainbowBracketClass(rainbowBrackets)
+			spans[i] = span
+			rainbowBrackets++
+		case ")", "]", "}":
+			rainbowBrackets--
+			span.class = getRainbowBracketClass(rainbowBrackets)
+			spans[i] = span
+		}
+	}
 
 	return spans
 }
@@ -358,10 +432,12 @@ func render(segments []highlightedSegment, windowStart uint, windowEnd uint, cod
 		slice := code[s:e]
 
 		chunkBuilder.WriteString(fmt.Sprintf(
-			`<span class="%s" data-start="%d" data-end="%d">%s</span>`,
+			`<span class="%s" data-start="%d" data-end="%d" data-kind="%s" data-grammarname="%s">%s</span>`,
 			segment.class,
 			s,
 			e,
+			segment.kind,
+			segment.grammarname,
 			html.EscapeString(string(slice)),
 		))
 	}

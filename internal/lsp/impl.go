@@ -260,7 +260,7 @@ func (ls *LanguageServer) openDocument(file string) error {
 		Params: didOpenParams{
 			TextDocument: textDocumentItem{
 				URI:        uri,
-				LanguageID: ls.getLanguageID(file),
+				LanguageID: getLanguageID(file),
 				Version:    1,
 				Text:       string(content),
 			},
@@ -459,19 +459,30 @@ func (ls *LanguageServer) parsePosition(posData any) *Position {
 	}
 }
 
-func (ls *LanguageServer) getLanguageID(filename string) string {
+func getLanguageID(filename string) string {
 	ext := filepath.Ext(filename)
 	switch ext {
 	case ".go":
 		return "go"
-	case ".js":
+	case ".js", ".jsx":
 		return "javascript"
 	case ".ts":
 		return "typescript"
+	case ".tsx":
+		return "typescriptreact"
 	case ".py":
 		return "python"
 	default:
 		return "plaintext"
+	}
+}
+
+func getImplementation(languageID string) (string, bool) {
+	switch languageID {
+	case "go":
+		return "gopls", true
+	default:
+		return "", false
 	}
 }
 
