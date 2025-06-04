@@ -14,6 +14,9 @@ prebuild:
     pnpm exec tailwindcss -i ./internal/web/view/styles.css -o ./internal/web/view/styles.min.css --minify
     pnpm exec tsgo --outDir ./internal/web/view
 
+dev:
+    air
+
 bulid:
     @just prebuild
     go build -o viewre
