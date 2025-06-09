@@ -17,7 +17,10 @@
 package web
 
 import (
+	"fmt"
 	"net/http"
+	"time"
+	"viewre/internal/config"
 	"viewre/internal/web/api"
 	"viewre/internal/web/context"
 	"viewre/internal/web/view"
@@ -29,7 +32,7 @@ func NewServer() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/_static/", view.StaticFileHandler)
 	mux.HandleFunc("/", IndexTemplHandler(view.Index()))
-	mux.HandleFunc("/compare/{repo}/{a}/{b}", RequireActiveLogin(TemplHandler(view.Compare())))
+	mux.HandleFunc("/compare/{repo}/{a}/{b}", RequireActiveLogin(CaheFor(2*time.Minute, TemplHandler(view.Compare()))))
 	mux.HandleFunc("/profile", RequireLogin(TemplHandler(view.Profile())))
 	mux.HandleFunc("/admin", RequireActiveLogin(TemplHandler(view.Admin())))
 	mux.HandleFunc("/api/login", api.LoginHandler)
@@ -38,6 +41,21 @@ func NewServer() http.Handler {
 	mux.HandleFunc("/api/repo", RequireActiveLogin(api.AdminRepoHandler))
 	mux.HandleFunc("/api/lsp/hover/{repo}/{commit}/{file}/{index}", api.LspHoverHandler)
 	return mux
+}
+
+func CaheFor(duration time.Duration, next http.HandlerFunc) http.HandlerFunc {
+	if config.Production {
+		maxAge := int(duration.Seconds())
+		return func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Cache-Control", fmt.Sprintf("public, max-age=%d", maxAge))
+			next(w, r)
+		}
+	} else {
+		return func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Cache-Control", "public, max-age=10")
+			next(w, r)
+		}
+	}
 }
 
 func RequireActiveLogin(next http.HandlerFunc) http.HandlerFunc {
@@ -65,7 +83,9 @@ func RequireLogin(next http.HandlerFunc) http.HandlerFunc {
 
 func TemplHandler(templComponent templ.Component) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+		if w.Header().Get("Cache-Control") == "" {
+			w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		ctx := context.FromRequest(r)
 		if err := templComponent.Render(ctx, w); err != nil {

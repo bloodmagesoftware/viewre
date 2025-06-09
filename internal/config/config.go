@@ -31,6 +31,7 @@ var (
 	WorkosClientId       string
 	WorkosApiKey         string
 	WorkosCookiePassword string
+	Production           bool
 )
 
 func loadEnv() {
@@ -99,4 +100,6 @@ func init() {
 	} else {
 		Url = "https://" + Origin
 	}
+
+	Production = strings.HasPrefix(Url, "https://")
 }
