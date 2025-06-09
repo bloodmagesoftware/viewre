@@ -18,12 +18,14 @@ package context
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/base64"
+	"fmt"
+	"html"
 	"net/http"
-	"strings"
 	"time"
-	"viewre/internal/db"
-	"viewre/internal/web/auth"
+	"viewre/internal/web/api"
+
+	"github.com/workos/workos-go/v4/pkg/usermanagement"
 )
 
 func FromRequest(r *http.Request) MyContext {
@@ -33,24 +35,20 @@ func FromRequest(r *http.Request) MyContext {
 	} else if myCtx, ok := currentCtx.(MyContext); ok {
 		return myCtx
 	}
+	user, ok := api.GetAuthenticatedUser(r)
 	ctx := MyContext{
-		ctx:     currentCtx,
-		request: r,
-	}
-	if s, err := auth.Store.Get(r, "auth-session"); err == nil {
-		userInfoJson, ok := s.Values["user_info"].(string)
-		if ok {
-			_ = json.NewDecoder(strings.NewReader(userInfoJson)).Decode(&ctx.UserInfo)
-			ctx.LoggedIn = true
-		}
+		ctx:      currentCtx,
+		request:  r,
+		user:     &user,
+		LoggedIn: ok,
 	}
 	return ctx
 }
 
 type MyContext struct {
-	UserInfo auth.UserInfo
 	ctx      context.Context
 	request  *http.Request
+	user     *usermanagement.User
 	LoggedIn bool
 }
 
@@ -69,23 +67,25 @@ func (ctx MyContext) Err() error {
 func (ctx MyContext) Value(key any) any {
 	if keyStr, ok := key.(string); ok {
 		switch keyStr {
-		case "sub":
-			return ctx.UserInfo.Sub
+		case "sub", "id":
+			return ctx.user.ID
 		case "name":
-			return ctx.UserInfo.GetName()
+			return ctx.user.FirstName + " " + ctx.user.LastName
 		case "email":
-			return ctx.UserInfo.Email
+			return ctx.user.Email
 		case "picture":
-			return ctx.UserInfo.Picture
-		case "email_verified":
-			return ctx.UserInfo.EmailVerified
-		case "active":
-			db.Users.RLock()
-			defer db.Users.RUnlock()
-			if user, ok := db.Users.Get(ctx.UserInfo.Sub); ok {
-				return user.Active
+			if len(ctx.user.ProfilePictureURL) > 0 {
+				return ctx.user.ProfilePictureURL
 			}
-			return false
+			return "data:image/svg+xml;base64," +
+				base64.StdEncoding.EncodeToString([]byte(
+					fmt.Sprintf(
+						`<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><g clip-path="url(#clip0_605_2)"><rect width="64" height="64" fill="#2A233E"/><text fill="white" xml:space="preserve" style="white-space: pre" font-family="sans-serif" font-size="32" letter-spacing="0em"><tspan x="8.375" y="43.6364">%s</tspan></text></g><defs><clipPath id="clip0_605_2"><rect width="64" height="64" fill="white"/></clipPath></defs></svg>`,
+						html.EscapeString(initials(ctx.user)),
+					),
+				))
+		case "email_verified":
+			return ctx.user.EmailVerified
 		case "logged_in":
 			return ctx.LoggedIn
 		default:
@@ -97,4 +97,20 @@ func (ctx MyContext) Value(key any) any {
 	}
 
 	return ctx.ctx.Value(key)
+}
+
+func initials(user *usermanagement.User) string {
+	if len(user.FirstName) > 0 {
+		if len(user.LastName) > 0 {
+			return user.FirstName[0:1] + user.LastName[0:1]
+		} else {
+			return user.FirstName[0:2]
+		}
+	} else {
+		if len(user.LastName) > 0 {
+			return user.LastName[0:2]
+		} else {
+			return "??"
+		}
+	}
 }

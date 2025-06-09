@@ -17,83 +17,174 @@
 package api
 
 import (
-	"context"
-	"encoding/json"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/hex"
 	"net/http"
-	"viewre/internal/db"
-	"viewre/internal/web/auth"
+	"time"
+	"viewre/internal/config"
+
+	"github.com/workos/workos-go/v4/pkg/auditlogs"
+	"github.com/workos/workos-go/v4/pkg/directorysync"
+	"github.com/workos/workos-go/v4/pkg/organizations"
+	"github.com/workos/workos-go/v4/pkg/passwordless"
+	"github.com/workos/workos-go/v4/pkg/portal"
+	"github.com/workos/workos-go/v4/pkg/sso"
+	"github.com/workos/workos-go/v4/pkg/usermanagement"
 )
+
+func init() {
+	sso.Configure(config.WorkosApiKey, config.WorkosClientId)
+	organizations.SetAPIKey(config.WorkosApiKey)
+	passwordless.SetAPIKey(config.WorkosApiKey)
+	directorysync.SetAPIKey(config.WorkosApiKey)
+	auditlogs.SetAPIKey(config.WorkosApiKey)
+	usermanagement.SetAPIKey(config.WorkosApiKey)
+	portal.SetAPIKey(config.WorkosApiKey)
+}
 
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	noCache(w)
-	q := r.URL.Query()
-	if q.Has("target") {
-		state := q.Get("target")
-		authURL := auth.OAuth2Config.AuthCodeURL(state)
-		http.Redirect(w, r, authURL, http.StatusFound)
+	codeVerifierBytes := make([]byte, 32)
+	if _, err := rand.Read(codeVerifierBytes); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	state := "/profile"
-	authURL := auth.OAuth2Config.AuthCodeURL(state)
-	http.Redirect(w, r, authURL, http.StatusFound)
-}
+	codeVerifier := hex.EncodeToString(codeVerifierBytes)
 
-func CallbackHandler(w http.ResponseWriter, r *http.Request) {
-	noCache(w)
-	code := r.URL.Query().Get("code")
-	token, err := auth.OAuth2Config.Exchange(context.Background(), code)
+	sha256Hash := sha256.Sum256([]byte(codeVerifier))
+	codeChallenge := base64.RawURLEncoding.EncodeToString(sha256Hash[:])
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "code_verifier",
+		Value:    codeVerifier,
+		Path:     "/",
+		Expires:  time.Now().Add(10 * time.Minute),
+		HttpOnly: true,
+		Secure:   r.TLS != nil,
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	authUrl, err := usermanagement.GetAuthorizationURL(
+		usermanagement.GetAuthorizationURLOpts{
+			Provider:            "authkit",
+			ClientID:            config.WorkosClientId,
+			RedirectURI:         config.Url + "/api/login_callback",
+			CodeChallenge:       codeChallenge,
+			CodeChallengeMethod: "S256",
+		},
+	)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	rawIdToken, ok := token.Extra("id_token").(string)
-	if !ok {
-		http.Error(w, "No id_token field in oauth2 token", http.StatusInternalServerError)
+	http.Redirect(w, r, authUrl.String(), http.StatusFound)
+}
+
+func LoginCallbackHandler(w http.ResponseWriter, r *http.Request) {
+	noCache(w)
+	code := r.URL.Query().Get("code")
+	if code == "" {
+		http.Error(w, "code is empty", http.StatusBadRequest)
 		return
 	}
 
-	// Get the user info
-	idToken, err := auth.Verifier.Verify(r.Context(), rawIdToken)
+	codeVerifierCookie, err := r.Cookie("code_verifier")
 	if err != nil {
-		http.Error(w, "Failed to verify ID Token", http.StatusInternalServerError)
+		http.Error(w, "code_verifier cookie not found", http.StatusBadRequest)
 		return
 	}
 
-	var userInfo auth.UserInfo
-	if err := idToken.Claims(&userInfo); err != nil {
-		http.Error(w, "Failed to parse ID Token claims", http.StatusInternalServerError)
+	authenticateResponse, err := usermanagement.AuthenticateWithCode(
+		r.Context(),
+		usermanagement.AuthenticateWithCodeOpts{
+			Code:         code,
+			ClientID:     config.WorkosClientId,
+			CodeVerifier: codeVerifierCookie.Value,
+			IPAddress:    r.RemoteAddr,
+			UserAgent:    r.UserAgent(),
+		},
+	)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	// Create a session
-	session, _ := auth.Store.Get(r, "auth-session")
-	session.Values["id_token"] = rawIdToken
-	if userInfoJson, err := json.Marshal(userInfo); err != nil {
-		http.Error(w, "Failed to marshal user info", http.StatusInternalServerError)
-		return
-	} else {
-		session.Values["user_info"] = string(userInfoJson)
-	}
-	if err := session.Save(r, w); err != nil {
-		http.Error(w, "Failed to save session", http.StatusInternalServerError)
-		return
+	http.SetCookie(w, &http.Cookie{
+		Name:     "code_verifier",
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   r.TLS != nil,
+	})
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "access_token",
+		Value:    authenticateResponse.AccessToken,
+		Path:     "/",
+		Expires:  time.Now().Add(time.Hour * 24 * 7),
+		HttpOnly: true,
+		Secure:   r.TLS != nil,
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "user_id",
+		Value:    authenticateResponse.User.ID,
+		Path:     "/",
+		Expires:  time.Now().Add(time.Hour * 24 * 7),
+		HttpOnly: true,
+		Secure:   r.TLS != nil,
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	http.Redirect(w, r, "/", http.StatusFound)
+}
+
+func LogoutHandler(w http.ResponseWriter, r *http.Request) {
+	noCache(w)
+	http.SetCookie(w, &http.Cookie{
+		Name:   "code_verifier",
+		Value:  "",
+		Path:   "/",
+		MaxAge: -1,
+	})
+	http.SetCookie(w, &http.Cookie{
+		Name:   "access_token",
+		Value:  "",
+		Path:   "/",
+		MaxAge: -1,
+	})
+	http.SetCookie(w, &http.Cookie{
+		Name:   "user_id",
+		Value:  "",
+		Path:   "/",
+		MaxAge: -1,
+	})
+
+	http.Redirect(w, r, "/", http.StatusFound)
+}
+
+func GetAuthenticatedUser(
+	r *http.Request,
+) (usermanagement.User, bool) {
+	userIDCookie, err := r.Cookie("user_id")
+	if err != nil || userIDCookie.Value == "" {
+		return usermanagement.User{}, false
 	}
 
-	db.Users.Lock()
-	defer db.Users.Unlock()
-	if !db.Users.Has(userInfo.Sub) {
-		db.Users.Set(
-			userInfo.Sub,
-			&db.User{Sub: userInfo.Sub, Name: userInfo.GetName(), Email: userInfo.Email, Active: false},
-		)
+	user, err := usermanagement.GetUser(
+		r.Context(),
+		usermanagement.GetUserOpts{
+			User: userIDCookie.Value,
+		},
+	)
+	if err != nil {
+		return usermanagement.User{}, false
 	}
 
-	q := r.URL.Query()
-	if q.Has("state") {
-		state := q.Get("state")
-		http.Redirect(w, r, state, http.StatusFound)
-	} else {
-		http.Redirect(w, r, "/", http.StatusFound)
-	}
+	return user, true
 }

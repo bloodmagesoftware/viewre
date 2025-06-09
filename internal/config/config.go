@@ -18,7 +18,6 @@ package config
 
 import (
 	"bufio"
-	"encoding/base64"
 	"fmt"
 	"os"
 	"strconv"
@@ -26,13 +25,12 @@ import (
 )
 
 var (
-	Address           string
-	Origin            string
-	Url               string
-	SessionSecret     []byte
-	Auth0Domain       string
-	Auth0ClientID     string
-	Auth0ClientSecret string
+	Address              string
+	Origin               string
+	Url                  string
+	WorkosClientId       string
+	WorkosApiKey         string
+	WorkosCookiePassword string
 )
 
 func loadEnv() {
@@ -75,41 +73,28 @@ func init() {
 		os.Exit(1)
 	}
 
-	if sessionSecretStr, ok := os.LookupEnv("SESSION_SECRET"); ok {
-		if b64Std, err := base64.StdEncoding.DecodeString(sessionSecretStr); err == nil {
-			SessionSecret = b64Std
-		} else if b64Url, err := base64.URLEncoding.DecodeString(sessionSecretStr); err == nil {
-			SessionSecret = b64Url
-		} else {
-			SessionSecret = []byte(sessionSecretStr)
-		}
+	if workosClientId, ok := os.LookupEnv("WORKOS_CLIENT_ID"); ok {
+		WorkosClientId = workosClientId
 	} else {
-		fmt.Fprintf(os.Stderr, "Error: SESSION_SECRET not set\n")
+		fmt.Fprintf(os.Stderr, "WORKOS_CLIENT_ID is not set")
 		os.Exit(1)
 	}
 
-	if auth0DomainStr, ok := os.LookupEnv("AUTH0_DOMAIN"); ok {
-		Auth0Domain = auth0DomainStr
+	if workosApiKey, ok := os.LookupEnv("WORKOS_API_KEY"); ok {
+		WorkosApiKey = workosApiKey
 	} else {
-		fmt.Fprintf(os.Stderr, "Error: AUTH0_DOMAIN not set\n")
+		fmt.Fprintf(os.Stderr, "WORKOS_API_KEY is not set")
 		os.Exit(1)
 	}
 
-	if auth0ClientIDStr, ok := os.LookupEnv("AUTH0_CLIENT_ID"); ok {
-		Auth0ClientID = auth0ClientIDStr
+	if workosCookiePassword, ok := os.LookupEnv("WORKOS_COOKIE_PASSWORD"); ok {
+		WorkosCookiePassword = workosCookiePassword
 	} else {
-		fmt.Fprintf(os.Stderr, "Error: AUTH0_CLIENT_ID not set\n")
+		fmt.Fprintf(os.Stderr, "WORKOS_COOKIE_PASSWORD is not set")
 		os.Exit(1)
 	}
 
-	if auth0ClientSecretStr, ok := os.LookupEnv("AUTH0_CLIENT_SECRET"); ok {
-		Auth0ClientSecret = auth0ClientSecretStr
-	} else {
-		fmt.Fprintf(os.Stderr, "Error: AUTH0_CLIENT_SECRET not set\n")
-		os.Exit(1)
-	}
-
-	if strings.HasPrefix(Origin, "localhost") {
+	if strings.HasPrefix(Origin, "localhost") || strings.HasPrefix(Origin, "127.0.0.1") || strings.HasPrefix(Origin, "host.docker.internal") {
 		Url = "http://" + Origin
 	} else {
 		Url = "https://" + Origin

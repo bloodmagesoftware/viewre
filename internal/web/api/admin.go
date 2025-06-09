@@ -22,24 +22,6 @@ import (
 	"viewre/internal/db"
 )
 
-func AdminEnableUserHandler(w http.ResponseWriter, r *http.Request) {
-	noCache(w)
-	userId := r.URL.Query().Get("id")
-	if userId == "" {
-		http.Error(w, "No user id provided", http.StatusBadRequest)
-		return
-	}
-	db.Users.Lock()
-	defer db.Users.Unlock()
-	user, ok := db.Users.Get(userId)
-	if !ok {
-		http.Error(w, "User not found", http.StatusNotFound)
-		return
-	}
-	user.Active = true
-	w.WriteHeader(http.StatusOK)
-}
-
 func encodeSshKey(key string) []byte {
 	if len(key) == 0 {
 		return nil

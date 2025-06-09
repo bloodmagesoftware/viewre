@@ -18,7 +18,6 @@ package web
 
 import (
 	"net/http"
-	"viewre/internal/db"
 	"viewre/internal/web/api"
 	"viewre/internal/web/context"
 	"viewre/internal/web/view"
@@ -33,10 +32,10 @@ func NewServer() http.Handler {
 	mux.HandleFunc("/compare/{repo}/{a}/{b}", RequireActiveLogin(TemplHandler(view.Compare())))
 	mux.HandleFunc("/profile", RequireLogin(TemplHandler(view.Profile())))
 	mux.HandleFunc("/admin", RequireActiveLogin(TemplHandler(view.Admin())))
-	mux.HandleFunc("/auth/login", api.LoginHandler)
-	mux.HandleFunc("/auth/callback", api.CallbackHandler)
-	mux.HandleFunc("/admin/enable-user", RequireActiveLogin(api.AdminEnableUserHandler))
-	mux.HandleFunc("/admin/repo", RequireActiveLogin(api.AdminRepoHandler))
+	mux.HandleFunc("/api/login", api.LoginHandler)
+	mux.HandleFunc("/api/login_callback", api.LoginCallbackHandler)
+	mux.HandleFunc("/api/logout", RequireActiveLogin(api.LogoutHandler))
+	mux.HandleFunc("/api/repo", RequireActiveLogin(api.AdminRepoHandler))
 	mux.HandleFunc("/api/lsp/hover/{repo}/{commit}/{file}/{index}", api.LspHoverHandler)
 	return mux
 }
@@ -46,14 +45,7 @@ func RequireActiveLogin(next http.HandlerFunc) http.HandlerFunc {
 		ctx := context.FromRequest(r)
 		// check login
 		if !ctx.LoggedIn {
-			http.Redirect(w, r, "/auth/login", http.StatusFound)
-			return
-		}
-		// check active
-		db.Users.RLock()
-		defer db.Users.RUnlock()
-		if u, ok := db.Users.Get(ctx.UserInfo.Sub); !ok || !u.Active {
-			http.Error(w, "User not active", http.StatusForbidden)
+			http.Redirect(w, r, "/api/login", http.StatusFound)
 			return
 		}
 		next(w, r.WithContext(ctx))
@@ -64,7 +56,7 @@ func RequireLogin(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := context.FromRequest(r)
 		if !ctx.LoggedIn {
-			http.Redirect(w, r, "/auth/login", http.StatusFound)
+			http.Redirect(w, r, "/api/login", http.StatusFound)
 			return
 		}
 		next(w, r.WithContext(ctx))

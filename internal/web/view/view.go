@@ -114,9 +114,7 @@ func filenameWithHash(name string, hash string) string {
 }
 
 func staticUrl(path string) string {
-	fmt.Println("staticUrl", path)
 	if url, ok := staticFileNameToUrl[path]; ok {
-		fmt.Println("staticUrl", path, url)
 		return unixpath.Join("/_static/", url)
 	}
 	panic(fmt.Sprintf("static file not found: %s", path))
