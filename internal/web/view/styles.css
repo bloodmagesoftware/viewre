@@ -75,7 +75,7 @@ body {
     grid-template-columns: 50% 50%;
     grid-template-rows: 1fr;
     grid-template-areas: "left right";
-    @apply grid bg-stone-900 mt-4 rounded-md;
+    @apply grid mt-4 gap-2;
   }
   .diff__left {
     grid-area: left;
@@ -85,27 +85,32 @@ body {
   }
   .diff__left,
   .diff__right {
-    @apply block p-2 overflow-x-auto;
+    @apply block p-2 overflow-x-auto rounded-md bg-stone-900;
   }
 
   .chunk {
-    @apply whitespace-pre font-mono block text-xs w-fit px-1;
+    @apply whitespace-pre font-mono block rounded-md text-xs w-fit px-1;
+  }
+  .chunk--add,
+  .chunk--delete,
+  .chunk--space {
+    @apply outline outline-solid;
   }
   .chunk--add {
-    @apply bg-green-900;
+    @apply bg-green-950 outline-green-900;
   }
   .chunk--delete {
-    @apply bg-red-900;
+    @apply bg-red-950 outline-red-900;
   }
   .chunk--add,
   .chunk--delete {
     min-width: calc(100% - 4rem);
-    @apply rounded-sm w-fit;
+    @apply w-fit;
   }
   .chunk--space {
     min-width: calc(100% - 4rem);
     user-select: none;
     pointer-events: none;
-    @apply bg-stone-800 text-stone-50 rounded-md;
+    @apply bg-stone-800 text-stone-50 outline-stone-700 w-full;
   }
 }
