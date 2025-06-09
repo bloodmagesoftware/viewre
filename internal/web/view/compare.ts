@@ -23,7 +23,7 @@ const mainEl = document.querySelector("main") ?? panic("no main element");
 
 const textContentRegex = /[a-zA-Z_][a-zA-Z_0-9]/;
 
-mainEl.addEventListener("mousemove", async (event) => {
+mainEl.addEventListener("mousedown", async (event) => {
   const targetEl = event.target as HTMLElement | null;
   if (!targetEl) {
     hoverLeaveEvent();
@@ -42,13 +42,29 @@ mainEl.addEventListener("mousemove", async (event) => {
   }
 });
 
-mainEl.addEventListener("mouseleave", hoverLeaveEvent);
+document.addEventListener("scroll", (event) => {
+  if (
+    event.target === document ||
+    event.target === document.documentElement ||
+    event.target === document.body
+  ) {
+    hoverLeaveEvent();
+  } else {
+    console.log("scroll", event.target);
+  }
+});
 
 async function hoverEvent(targetEl: HTMLElement) {
   let hoverEl = document.getElementById("hover");
   if (!hoverEl) {
     hoverEl = document.createElement("div");
     hoverEl.classList.add(
+      "fixed",
+      "w-fit",
+      "max-w-1/2",
+      "h-fit",
+      "max-h-1/2",
+      "overflow-auto",
       "rounded-md",
       "bg-stone-950",
       "text-white",
@@ -60,12 +76,9 @@ async function hoverEvent(targetEl: HTMLElement) {
       "hidden",
     );
     hoverEl.id = "hover";
-    hoverEl.style.display = "block";
-    hoverEl.style.position = "fixed";
     hoverEl.style.width = "fit-content";
     hoverEl.style.height = "fit-content";
     hoverEl.style.translate = "-50% -100%";
-    hoverEl.style.pointerEvents = "none";
     document.body.appendChild(hoverEl);
   }
   const rect = targetEl.getBoundingClientRect();
@@ -76,6 +89,7 @@ async function hoverEvent(targetEl: HTMLElement) {
   if (hover) {
     hoverEl.innerHTML = hover;
     hoverEl.classList.remove("hidden");
+    hoverEl.classList.add("block");
     return true;
   } else {
     return false;

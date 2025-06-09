@@ -35,6 +35,23 @@ body {
 }
 
 @layer base {
+  #hover * {
+    @apply text-xs;
+  }
+  #hover a {
+    @apply underline text-blue-500;
+  }
+  #hover ul {
+    @apply list-disc list-inside;
+  }
+  #hover ol {
+    @apply list-decimal list-inside;
+  }
+
+  code {
+    @apply font-mono;
+  }
+
   .btn {
     @apply rounded-md bg-blue-600 px-4 py-2 text-blue-50 font-bold cursor-pointer hover:bg-blue-700;
   }
