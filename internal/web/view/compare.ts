@@ -49,10 +49,10 @@ document.addEventListener("scroll", (event) => {
     event.target === document.body
   ) {
     hoverLeaveEvent();
-  } else {
-    console.log("scroll", event.target);
   }
 });
+
+window.addEventListener("resize", hoverLeaveEvent);
 
 async function hoverEvent(targetEl: HTMLElement) {
   let hoverEl = document.getElementById("hover");
@@ -66,34 +66,54 @@ async function hoverEvent(targetEl: HTMLElement) {
       "max-h-1/2",
       "overflow-auto",
       "rounded-md",
-      "bg-stone-950",
+      "bg-stone-950/75",
+      "shadow-lg",
+      "backdrop-blur-md",
+      "z-50",
       "text-white",
       "text-xs",
-      "p-2",
+      "p-4",
       "border",
       "border-stone-800",
       "border-solid",
       "hidden",
     );
     hoverEl.id = "hover";
-    hoverEl.style.width = "fit-content";
-    hoverEl.style.height = "fit-content";
-    hoverEl.style.translate = "-50% -100%";
     document.body.appendChild(hoverEl);
   }
-  const rect = targetEl.getBoundingClientRect();
-  const horizontalCenter = rect.left + rect.width / 2;
-  hoverEl.style.left = `${horizontalCenter}px`;
-  hoverEl.style.top = `${rect.top}px`;
   const hover = await getSymbolHover(targetEl);
   if (hover) {
     hoverEl.innerHTML = hover;
     hoverEl.classList.remove("hidden");
     hoverEl.classList.add("block");
+    requestAnimationFrame(() => {
+      const symbolRect = targetEl.getBoundingClientRect();
+      const hoverRect = hoverEl.getBoundingClientRect();
+      const bodyRect = document.body.getBoundingClientRect();
+      const horizontalCenter = symbolRect.left + symbolRect.width / 2;
+
+      const posX = clamp(
+        0,
+        horizontalCenter - hoverRect.width / 2,
+        bodyRect.width - hoverRect.width,
+      );
+      const posY = clamp(
+        0,
+        symbolRect.top - hoverRect.height - 8,
+        bodyRect.height - hoverRect.height,
+      );
+
+      hoverEl.style.left = `${posX}px`;
+      hoverEl.style.top = `${posY}px`;
+    });
     return true;
   } else {
     return false;
   }
+}
+
+function clamp(min: number, value: number, max: number) {
+  return Math.min(Math.max(min, value), max);
 }
 
 function hoverLeaveEvent() {
