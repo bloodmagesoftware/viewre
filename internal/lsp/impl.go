@@ -29,6 +29,7 @@ import (
 	"strings"
 	"unicode/utf16"
 	"unicode/utf8"
+	"viewre/internal/languagemapping"
 )
 
 type LanguageServer struct {
@@ -260,7 +261,7 @@ func (ls *LanguageServer) openDocument(file string) error {
 		Params: didOpenParams{
 			TextDocument: textDocumentItem{
 				URI:        uri,
-				LanguageID: getLanguageID(file),
+				LanguageID: languagemapping.GetLanguageID(filepath.Base(file)),
 				Version:    1,
 				Text:       string(content),
 			},
@@ -456,33 +457,6 @@ func (ls *LanguageServer) parsePosition(posData any) *Position {
 	return &Position{
 		Line:      int(line),
 		Character: int(character),
-	}
-}
-
-func getLanguageID(filename string) string {
-	ext := filepath.Ext(filename)
-	switch ext {
-	case ".go":
-		return "go"
-	case ".js", ".jsx":
-		return "javascript"
-	case ".ts":
-		return "typescript"
-	case ".tsx":
-		return "typescriptreact"
-	case ".py":
-		return "python"
-	default:
-		return "plaintext"
-	}
-}
-
-func getImplementation(languageID string) (string, bool) {
-	switch languageID {
-	case "go":
-		return "gopls", true
-	default:
-		return "", false
 	}
 }
 

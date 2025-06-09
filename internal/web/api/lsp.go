@@ -20,9 +20,11 @@ import (
 	"encoding/base64"
 	"html"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"sync"
 	"viewre/internal/db"
+	"viewre/internal/languagemapping"
 	"viewre/internal/lsp"
 	"viewre/internal/repository"
 
@@ -68,7 +70,10 @@ func LspHoverHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client, err := lsp.GetServer("gopls", projectDir)
+	client, err := lsp.GetServer(
+		languagemapping.GetLanguageID(filepath.Base(file)),
+		projectDir,
+	)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

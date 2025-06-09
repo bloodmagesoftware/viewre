@@ -17,9 +17,11 @@
 package lsp
 
 import (
+	"fmt"
 	"log"
 	"sync"
 	"time"
+	"viewre/internal/languagemapping"
 )
 
 type ServerRegister struct {
@@ -54,7 +56,11 @@ func GetServer(language string, rootDir string) (LanguageServer, error) {
 		return reg.server, nil
 	}
 	log.Println("starting new server", key)
-	client, err := Start("gopls", rootDir)
+	lspImpl, ok := languagemapping.GetImplementation(language)
+	if !ok {
+		return LanguageServer{}, fmt.Errorf("no LSP implementation for language %q", language)
+	}
+	client, err := Start(lspImpl, rootDir)
 	if err != nil {
 		return LanguageServer{}, err
 	}

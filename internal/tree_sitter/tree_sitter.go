@@ -22,58 +22,17 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"viewre/internal/languagemapping"
 
-	tree_sitter_markdown "github.com/tree-sitter-grammars/tree-sitter-markdown/bindings/go"
 	tree_sitter "github.com/tree-sitter/go-tree-sitter"
-	tree_sitter_cs "github.com/tree-sitter/tree-sitter-c-sharp/bindings/go"
-	tree_sitter_c "github.com/tree-sitter/tree-sitter-c/bindings/go"
-	tree_sitter_cpp "github.com/tree-sitter/tree-sitter-cpp/bindings/go"
-	tree_sitter_css "github.com/tree-sitter/tree-sitter-css/bindings/go"
-	tree_sitter_embedded_template "github.com/tree-sitter/tree-sitter-embedded-template/bindings/go"
-	tree_sitter_go "github.com/tree-sitter/tree-sitter-go/bindings/go"
-	tree_sitter_haskell "github.com/tree-sitter/tree-sitter-haskell/bindings/go"
-	tree_sitter_html "github.com/tree-sitter/tree-sitter-html/bindings/go"
-	tree_sitter_java "github.com/tree-sitter/tree-sitter-java/bindings/go"
-	tree_sitter_javascript "github.com/tree-sitter/tree-sitter-javascript/bindings/go"
-	tree_sitter_json "github.com/tree-sitter/tree-sitter-json/bindings/go"
-	tree_sitter_ocaml "github.com/tree-sitter/tree-sitter-ocaml/bindings/go"
-	tree_sitter_php "github.com/tree-sitter/tree-sitter-php/bindings/go"
-	tree_sitter_python "github.com/tree-sitter/tree-sitter-python/bindings/go"
-	tree_sitter_ruby "github.com/tree-sitter/tree-sitter-ruby/bindings/go"
-	tree_sitter_rust "github.com/tree-sitter/tree-sitter-rust/bindings/go"
-	tree_sitter_typescript "github.com/tree-sitter/tree-sitter-typescript/bindings/go"
-	tree_sitter_editorconfig "github.com/valdezfomar/tree-sitter-editorconfig/bindings/go"
 
 	"github.com/go-git/go-git/v5/plumbing/format/diff"
 )
 
-var languages = map[string]*tree_sitter.Language{
-	"md":           tree_sitter.NewLanguage(tree_sitter_markdown.Language()),
-	"cs":           tree_sitter.NewLanguage(tree_sitter_cs.Language()),
-	"c":            tree_sitter.NewLanguage(tree_sitter_c.Language()),
-	"cpp":          tree_sitter.NewLanguage(tree_sitter_cpp.Language()),
-	"css":          tree_sitter.NewLanguage(tree_sitter_css.Language()),
-	"erb":          tree_sitter.NewLanguage(tree_sitter_embedded_template.Language()),
-	"go":           tree_sitter.NewLanguage(tree_sitter_go.Language()),
-	"hs":           tree_sitter.NewLanguage(tree_sitter_haskell.Language()),
-	"html":         tree_sitter.NewLanguage(tree_sitter_html.Language()),
-	"java":         tree_sitter.NewLanguage(tree_sitter_java.Language()),
-	"js":           tree_sitter.NewLanguage(tree_sitter_javascript.Language()),
-	"json":         tree_sitter.NewLanguage(tree_sitter_json.Language()),
-	"ocaml":        tree_sitter.NewLanguage(tree_sitter_ocaml.LanguageOCaml()),
-	"php":          tree_sitter.NewLanguage(tree_sitter_php.LanguagePHP()),
-	"py":           tree_sitter.NewLanguage(tree_sitter_python.Language()),
-	"rs":           tree_sitter.NewLanguage(tree_sitter_rust.Language()),
-	"rb":           tree_sitter.NewLanguage(tree_sitter_ruby.Language()),
-	"ts":           tree_sitter.NewLanguage(tree_sitter_typescript.LanguageTypescript()),
-	"tsx":          tree_sitter.NewLanguage(tree_sitter_typescript.LanguageTSX()),
-	"editorconfig": tree_sitter.NewLanguage(tree_sitter_editorconfig.Language()),
-}
-
 func parse(code []byte, lang string, oldTree *tree_sitter.Tree) (*tree_sitter.Tree, error) {
 	parser := tree_sitter.NewParser()
 	defer parser.Close()
-	if tsLang, ok := languages[lang]; !ok {
+	if tsLang, ok := languagemapping.GetParser(lang); !ok {
 		return nil, fmt.Errorf("unknown language %q", lang)
 	} else {
 		if err := parser.SetLanguage(tsLang); err != nil {
@@ -126,8 +85,8 @@ func Patch(a, b string, filePatch diff.FilePatch) (header string, body string) {
 	fromCode := []byte(fromFullContentBuilder.String())
 	toCode := []byte(toFullContentBuilder.String())
 
-	fromLang := extToLang(filepath.Ext(from.Path()))
-	toLang := extToLang(filepath.Ext(to.Path()))
+	fromLang := languagemapping.GetLanguageID(filepath.Base(from.Path()))
+	toLang := languagemapping.GetLanguageID(filepath.Base(to.Path()))
 
 	fromTree, err := parse(fromCode, fromLang, nil)
 	if err != nil {
