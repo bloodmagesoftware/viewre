@@ -67,10 +67,6 @@ body {
     @apply block bg-stone-900 text-stone-50 border-stone-700 border-2 rounded-md px-4 py-2 my-2 resize-none w-full;
   }
 
-  .ts-node:hover {
-    @apply drop-shadow-md drop-shadow-current outline outline-current outline-dashed;
-  }
-
   .diff {
     grid-template-columns: 50% 50%;
     grid-template-rows: 1fr;
