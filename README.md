@@ -13,6 +13,8 @@ It provides the same functionality you get from an IDE but tailored for looking 
 
 The goal of ViewRe is to reduce the hurdles when reviewing someone else's code.
 
+![Screenshot of ViewRe](docs/screenshot.webp)
+
 ## How it works
 
 [go-git](https://github.com/go-git/go-git) is used to interact with Git repositories and create a patch between two commits.
