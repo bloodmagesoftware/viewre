@@ -20,8 +20,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"html"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"regexp"
+	"strings"
 	"sync"
 	"viewre/internal/db"
 
@@ -106,6 +110,97 @@ func Diff(ctx context.Context, repo *db.Repo, baseRef, changeRef string) (string
 	}
 
 	return baseCommit.Hash.String(), changeCommit.Hash.String(), patch, nil
+}
+
+var logLineParser = regexp.MustCompile(`([* |\/\\]*[*|\/\\]+) +([a-z0-9]+) +(.+)`)
+
+func Log(ctx context.Context, repo *db.Repo) (string, error) {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	repoPath := filepath.Join(tempDir, repo.Name, "HEAD")
+	r, err := openGitRepo(ctx, repo, repoPath)
+	if err != nil {
+		return "", err
+	}
+	auth := repo.Auth()
+
+	remote, err := r.Remote("origin")
+	if err != nil {
+		return "", fmt.Errorf("failed to get remote: %w", err)
+	}
+
+	err = remote.Fetch(&git.FetchOptions{
+		RefSpecs: []config.RefSpec{"refs/*:refs/*"},
+		Auth:     auth,
+		Force:    true,
+	})
+	if err != nil && err != git.NoErrAlreadyUpToDate {
+		return "", fmt.Errorf("failed to fetch: %w", err)
+	}
+
+	cmd := exec.CommandContext(ctx, "git", "log", "--pretty=oneline", "--graph", "--decorate", "--all", "--branches", "--no-color")
+	cmd.Dir = repoPath
+	out, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("failed to run git log: %w", err)
+	}
+	lines := strings.Split(string(out), "\n")
+
+	signsBuilder := strings.Builder{}
+	for _, line := range lines {
+		result := logLineParser.FindStringSubmatch(line)
+		if len(result) == 4 {
+			signs := result[1]
+			signsBuilder.WriteString("<p>")
+			signsBuilder.WriteString(replaceSigns(signs))
+			signsBuilder.WriteString("</p>")
+		} else {
+			signsBuilder.WriteString(fmt.Sprintf(`<p>%s</p>`, replaceSigns(line)))
+		}
+	}
+
+	contentBuilder := strings.Builder{}
+	for _, line := range lines {
+		result := logLineParser.FindStringSubmatch(line)
+		if len(result) == 4 {
+			hash := result[2]
+			text := result[3]
+			contentBuilder.WriteString(fmt.Sprintf(
+				`<p class="whitespace-pre cursor-pointer" data-commit="%s"><span class="text-yellow-500">%s</span> %s</p>`,
+				html.EscapeString(hash),
+				html.EscapeString(hash[0:8]),
+				html.EscapeString(text),
+			))
+		} else {
+			contentBuilder.WriteString("<br>")
+		}
+	}
+
+	return fmt.Sprintf(`<div class="w-full flex flex-row flex-nowrap"><div class="font-mono text-gray-500">%s</div><div class="overflow-x-auto" id="commits-content">%s</div></div>`, signsBuilder.String(), contentBuilder.String()), nil
+}
+
+func replaceSigns(signs string) string {
+	signsBuilder := strings.Builder{}
+	for _, char := range signs {
+		signsBuilder.WriteString(`<span`)
+		switch char {
+		case '*':
+			signsBuilder.WriteString(` class="commit-sign">│`)
+		case '\\':
+			signsBuilder.WriteString(`>╲`)
+		case '/':
+			signsBuilder.WriteString(`>╱`)
+		case '|':
+			signsBuilder.WriteString(`>│`)
+		case ' ':
+			signsBuilder.WriteString(">&nbsp;")
+		default:
+			signsBuilder.WriteRune(char)
+		}
+		signsBuilder.WriteString("</span>")
+	}
+	return signsBuilder.String()
 }
 
 func ensureRevision(ctx context.Context, r *git.Repository, rev string, auth transport.AuthMethod) (plumbing.Hash, error) {

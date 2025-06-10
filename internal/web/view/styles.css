@@ -24,14 +24,15 @@ body {
 }
 
 @font-face {
-  font-family: "JetBrains Mono";
-  src: url("/_static/JetBrainsMono-Regular.woff2") format("woff2");
+  font-family: "JetBrainsMono Nerd Font Propo";
+  src: url("/_static/JetBrainsMonoNerdFontPropo-Regular.ttf") format("truetype");
   font-weight: normal;
   font-style: normal;
 }
 
-.font-mono {
-  font-family: "JetBrains Mono", monospace;
+.font-mono,
+code {
+  font-family: "JetBrainsMono Nerd Font Propo", "JetBrains Mono", monospace !important;
 }
 
 @layer base {
@@ -108,5 +109,13 @@ body {
     user-select: none;
     pointer-events: none;
     @apply bg-stone-800 text-stone-50 outline-stone-700 w-full;
+  }
+
+  .commit-sign {
+    @apply relative;
+  }
+  .commit-sign::after {
+    @apply inline-block absolute top-0 right-0 text-yellow-500/50;
+    content: "o";
   }
 }

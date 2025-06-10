@@ -33,7 +33,7 @@ import (
 )
 
 var (
-	//go:embed *.min.css *.woff2 *.js
+	//go:embed *.min.css *.ttf *.js
 	staticFiles         embed.FS
 	staticFileNameToUrl map[string]string
 	staticFileUrlToName map[string]string

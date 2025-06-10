@@ -17,7 +17,6 @@
 package view
 
 import (
-	"strings"
 	"viewre/internal/db"
 )
 
@@ -26,19 +25,13 @@ templ Index() {
 		<h1 class="text-4xl font-bold mb-8">Repos</h1>
 		if ctx.Value("logged_in").(bool) {
 			for _, repo := range db.Repos.Iterate {
-				<p class="text-blue-500">
+				<a
+					href={ fmtUrl("/repos/%s", repo.Name) }
+					class="block text-blue-500 underline"
+				>
 					{ repo.Name }
-					if strings.HasPrefix(repo.Url, "http") {
-						<a
-							target="_blank"
-							rel="noopener noreferrer"
-							class="underline"
-							href={ templ.SafeURL(repo.Url) }
-						>({ repo.Url })</a>
-					} else {
-						({ repo.Url })
-					}
-				</p>
+					({ repo.Url })
+				</a>
 			}
 		} else {
 			<p>Login to see your the repos</p>

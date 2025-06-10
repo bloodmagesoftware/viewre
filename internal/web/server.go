@@ -33,6 +33,7 @@ func NewServer() http.Handler {
 	mux.HandleFunc("/_static/", view.StaticFileHandler)
 	mux.HandleFunc("/", IndexTemplHandler(view.Index()))
 	mux.HandleFunc("/compare/{repo}/{a}/{b}", RequireActiveLogin(CaheFor(2*time.Minute, TemplHandler(view.Compare()))))
+	mux.HandleFunc("/repos/{repo}", RequireActiveLogin(CaheFor(2*time.Minute, TemplHandler(view.Repo()))))
 	mux.HandleFunc("/profile", RequireLogin(TemplHandler(view.Profile())))
 	mux.HandleFunc("/admin", RequireActiveLogin(TemplHandler(view.Admin())))
 	mux.HandleFunc("/api/login", api.LoginHandler)
