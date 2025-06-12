@@ -59,7 +59,7 @@ func (nullFile) Mode() filemode.FileMode {
 
 // Path returns the complete Path to the file, including the filename.
 func (nullFile) Path() string {
-	return "/dev/null"
+	return ""
 }
 
 func Patch(a, b string, filePatch diff.FilePatch) (header string, body string) {
@@ -79,9 +79,17 @@ func Patch(a, b string, filePatch diff.FilePatch) (header string, body string) {
 	headerBuilder.WriteString("</p><p>")
 	headerBuilder.WriteString(html.EscapeString(fmt.Sprintf("index %.7s..%.7s %s", from.Hash().String(), to.Hash().String(), from.Mode().String())))
 	headerBuilder.WriteString("</p><p>")
-	headerBuilder.WriteString(html.EscapeString(fmt.Sprintf("--- i/%s", from.Path())))
+	if from.Path() == "" {
+		headerBuilder.WriteString(html.EscapeString("--- /dev/null"))
+	} else {
+		headerBuilder.WriteString(html.EscapeString(fmt.Sprintf("--- i/%s", from.Path())))
+	}
 	headerBuilder.WriteString("</p><p>")
-	headerBuilder.WriteString(html.EscapeString(fmt.Sprintf("+++ w/%s", to.Path())))
+	if to.Path() == "" {
+		headerBuilder.WriteString(html.EscapeString("+++ /dev/null"))
+	} else {
+		headerBuilder.WriteString(html.EscapeString(fmt.Sprintf("+++ w/%s", to.Path())))
+	}
 	headerBuilder.WriteString("</p>")
 	header = headerBuilder.String()
 
