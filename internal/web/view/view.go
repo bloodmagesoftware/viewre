@@ -33,7 +33,7 @@ import (
 )
 
 var (
-	//go:embed *.min.css *.ttf *.js
+	//go:embed *.min.css *.ttf *.js *.svg
 	staticFiles         embed.FS
 	staticFileNameToUrl map[string]string
 	staticFileUrlToName map[string]string
@@ -98,6 +98,16 @@ func contentTypeFromFilename(name string) string {
 		return "text/css"
 	case ".woff2":
 		return "font/woff2"
+	case ".woff":
+		return "font/woff"
+	case ".ttf":
+		return "font/ttf"
+	case ".svg":
+		return "image/svg+xml"
+	case ".png":
+		return "image/png"
+	case ".webp":
+		return "image/webp"
 	case ".map":
 		return "application/json"
 	default:

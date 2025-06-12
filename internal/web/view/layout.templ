@@ -27,11 +27,12 @@ templ Layout(title string) {
 			<meta property="og:title" content={ title }/>
 			<meta name="twitter:title" content={ title }/>
 			<meta property="og:site_name" content="enyDyne"/>
+			<link rel="icon" href={ staticUrl("favicon.svg") } sizes="any" type="image/svg+xml"/>
 		</head>
 		<body class="bg-stone-950 text-stone-50">
 			<header>
 				<nav class="flex items-center flex-wrap gap-4 bg-stone-900 p-6 mb-8 pr-24">
-					<a href="/" class="text-xl font-bold text-white mr-4">ViewRe</a>
+					<a href="/" class="text-xl font-bold text-white mr-4"><img class="inline-block h-8 w-8 mr-2" src={ staticUrl("favicon.svg") }/>ViewRe</a>
 					<a href="/admin" class="text-md">Admin</a>
 				</nav>
 				if ctx.Value("logged_in").(bool) {
