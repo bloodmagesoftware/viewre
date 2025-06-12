@@ -74,7 +74,7 @@ func Patch(a, b string, filePatch diff.FilePatch) (header string, body string) {
 		to = nullFile{}
 	}
 	headerBuilder := strings.Builder{}
-	headerBuilder.WriteString(`<p class="inline-block font-bold text-white">`)
+	headerBuilder.WriteString(`<p class="inline font-bold text-white">`)
 	headerBuilder.WriteString(html.EscapeString(fmt.Sprintf("diff --git i/%s w/%s", from.Path(), to.Path())))
 	headerBuilder.WriteString("</p><p>")
 	headerBuilder.WriteString(html.EscapeString(fmt.Sprintf("index %.7s..%.7s %s", from.Hash().String(), to.Hash().String(), from.Mode().String())))
@@ -206,7 +206,7 @@ func getNodeClass(nodeType string) (string, bool) {
 	case "comment", "line_comment", "block_comment", "//", "shebang":
 		return "text-neutral-400", true
 
-	case "string", "string_content", "string_fragment", "string_literal_content", "string_literal", "raw_string_literal", "interpreted_string_literal", "interpreted_string_literal_content", "\"", "'", "`", "fenced_code_block_delimiter", "indented_code_block", "fenced_code_block", "link_title", "attribute_value":
+	case "string", "string_start", "string_end", "string_content", "string_fragment", "string_literal_content", "string_literal", "raw_string_literal", "interpreted_string_literal", "interpreted_string_literal_content", "\"", "'", "`", "fenced_code_block_delimiter", "indented_code_block", "fenced_code_block", "link_title", "attribute_value":
 		return "text-green-400", true
 
 	case "link_destination", "link_label":
@@ -238,13 +238,13 @@ func getNodeClass(nodeType string) (string, bool) {
 	case "export":
 		return "text-cyan-400", true
 
-	case "import", "from", "as", "require", "package", "class", "interface", "enum", "type", "function", "fn", "fun", "func", "go", "var", "let", "const", "async", "await", "break", "case", "catch", "continue", "debugger", "default", "delete", "do", "else", "finally", "for", "if", "in", "instanceof", "new", "return", "switch", "this", "throw", "try", "typeof", "void", "while", "with", "yield", "private", "public", "protected", "internal", "pub", "use", "mod", "mut", "satisfies", "override", "readonly", "namespace", "keyof", "implements", "abstract", "declare", "using", "static":
+	case "import", "from", "as", "require", "package", "class", "def", "interface", "enum", "type", "function", "fn", "fun", "func", "go", "var", "let", "const", "async", "await", "break", "case", "catch", "continue", "debugger", "default", "delete", "do", "else", "finally", "for", "if", "in", "instanceof", "new", "return", "switch", "this", "throw", "try", "typeof", "void", "while", "with", "yield", "private", "public", "protected", "internal", "pub", "use", "mod", "mut", "satisfies", "override", "readonly", "namespace", "keyof", "implements", "abstract", "declare", "using", "static", "except":
 		return "text-indigo-400", true
 
 	case "assembly", "get", "set":
 		return "text-purple-400", true
 
-	case "operator", ":=", "=", "+", "-", "~", "*", "/", "%", "==", "!=", "===", "!==", "=>", "==>", "<-", "->", "<<", ">>", "<", ">", "/>", "</", "<=", ">=", "&&", "||", "!", "|", "&", "$":
+	case "operator", ":=", "=", "+", "-", "~", "*", "/", "%", "==", "!=", "===", "!==", "=>", "==>", "<-", "->", "<<", ">>", "<", ">", "/>", "</", "<=", ">=", "&&", "||", "!", "|", "&", "$", "@":
 		return "text-cyan-400", true
 
 	case "#if", "#else", "#elif", "#endif", "#ifdef", "#ifndef", "#include":

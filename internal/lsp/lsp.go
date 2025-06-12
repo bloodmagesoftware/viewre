@@ -55,11 +55,11 @@ func GetServer(language string, rootDir string) (LanguageServer, error) {
 		runningServers[key] = reg
 		return reg.server, nil
 	}
-	log.Println("starting new server", key)
 	lspImpl, ok := languagemapping.GetImplementation(language)
 	if !ok {
 		return LanguageServer{}, fmt.Errorf("no LSP implementation for language %q", language)
 	}
+	log.Println("starting new server", key)
 	client, err := Start(lspImpl, rootDir)
 	if err != nil {
 		return LanguageServer{}, err
