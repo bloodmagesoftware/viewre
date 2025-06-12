@@ -42,7 +42,7 @@ templ Compare() {
 					for _, fpatch := range patch.FilePatches() {
 						{{ headerHtml, bodyHtml := tree_sitter.Patch(a, b, fpatch) }}
 						<details class="block py-2 border-b border-gray-800">
-							<summary class="cursor-pointer">
+							<summary class="cursor-pointer bg-stone-950 sticky top-0 z-10">
 								@templ.Raw(headerHtml)
 							</summary>
 							@templ.Raw(bodyHtml)
