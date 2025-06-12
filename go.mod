@@ -7,6 +7,7 @@ require (
 	github.com/bloodmagesoftware/speicher v1.1.2
 	github.com/go-git/go-git/v5 v5.16.2
 	github.com/gomarkdown/markdown v0.0.0-20250311123330-531bef5e742b
+	github.com/tree-sitter-grammars/tree-sitter-lua v0.4.0
 	github.com/tree-sitter-grammars/tree-sitter-markdown v0.5.0
 	github.com/tree-sitter/go-tree-sitter v0.25.0
 	github.com/tree-sitter/tree-sitter-c v0.24.1

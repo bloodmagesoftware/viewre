@@ -101,7 +101,6 @@ code {
   }
   .chunk--add,
   .chunk--delete {
-    min-width: calc(100% - 4rem);
     @apply w-fit;
   }
   .chunk--space {

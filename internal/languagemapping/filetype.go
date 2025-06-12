@@ -24,6 +24,8 @@ func GetLanguageID(filename string) string {
 	ext := filepath.Ext(filename)
 
 	switch ext {
+	case ".lua":
+		return "lua"
 	case ".md", ".mdx":
 		return "markdown"
 	case ".cs":

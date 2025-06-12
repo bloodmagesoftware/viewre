@@ -203,7 +203,7 @@ type syntaxSpan struct {
 
 func getNodeClass(nodeType string) (string, bool) {
 	switch nodeType {
-	case "comment", "line_comment", "block_comment", "//", "shebang":
+	case "comment", "comment_content", "line_comment", "block_comment", "//", "shebang", "--":
 		return "text-neutral-400", true
 
 	case "string", "string_start", "string_end", "string_content", "string_fragment", "string_literal_content", "string_literal", "raw_string_literal", "interpreted_string_literal", "interpreted_string_literal_content", "\"", "'", "`", "fenced_code_block_delimiter", "indented_code_block", "fenced_code_block", "link_title", "attribute_value":
@@ -238,7 +238,7 @@ func getNodeClass(nodeType string) (string, bool) {
 	case "export":
 		return "text-cyan-400", true
 
-	case "import", "from", "as", "require", "package", "class", "def", "interface", "enum", "type", "function", "fn", "fun", "func", "go", "var", "let", "const", "async", "await", "break", "case", "catch", "continue", "debugger", "default", "delete", "do", "else", "finally", "for", "if", "in", "instanceof", "new", "return", "switch", "this", "throw", "try", "typeof", "void", "while", "with", "yield", "private", "public", "protected", "internal", "pub", "use", "mod", "mut", "satisfies", "override", "readonly", "namespace", "keyof", "implements", "abstract", "declare", "using", "static", "except":
+	case "import", "from", "as", "require", "package", "class", "def", "interface", "enum", "type", "function", "fn", "fun", "func", "go", "var", "let", "const", "async", "await", "break", "case", "catch", "continue", "debugger", "default", "delete", "do", "else", "finally", "for", "if", "in", "instanceof", "new", "return", "switch", "this", "throw", "try", "typeof", "void", "while", "with", "yield", "private", "public", "protected", "internal", "pub", "use", "mod", "mut", "satisfies", "override", "readonly", "namespace", "keyof", "implements", "abstract", "declare", "using", "static", "except", "local", "then", "end", "elseif":
 		return "text-indigo-400", true
 
 	case "assembly", "get", "set":
@@ -253,7 +253,7 @@ func getNodeClass(nodeType string) (string, bool) {
 	case "list_marker_plus", "list_marker_minus", "list_marker_star", "list_marker_dot", "list_marker_parenthesis", "thematic_break":
 		return "text-red-300", true
 
-	case "punctuation", "(", ")", "[", "]", "{", "}", ";", "?", ":", ",", ".", "..", "::", "#", "atx_h1_marker", "atx_h2_marker", "atx_h3_marker", "atx_h4_marker", "atx_h5_marker", "atx_h6_marker", "setext_h1_underline", "setext_h2_underline":
+	case "punctuation", "(", ")", "[", "]", "{", "}", ";", "?", ":", ",", ".", "...", "..", "::", "#", "atx_h1_marker", "atx_h2_marker", "atx_h3_marker", "atx_h4_marker", "atx_h5_marker", "atx_h6_marker", "setext_h1_underline", "setext_h2_underline":
 		return "text-gray-400", true
 
 	default:

@@ -17,6 +17,7 @@
 package languagemapping
 
 import (
+	tree_sitter_lua "github.com/tree-sitter-grammars/tree-sitter-lua/bindings/go"
 	tree_sitter_markdown "github.com/tree-sitter-grammars/tree-sitter-markdown/bindings/go"
 	tree_sitter "github.com/tree-sitter/go-tree-sitter"
 	tree_sitter_cs "github.com/tree-sitter/tree-sitter-c-sharp/bindings/go"
@@ -40,6 +41,7 @@ import (
 )
 
 var (
+	lua          = tree_sitter.NewLanguage(tree_sitter_lua.Language())
 	md           = tree_sitter.NewLanguage(tree_sitter_markdown.Language())
 	cs           = tree_sitter.NewLanguage(tree_sitter_cs.Language())
 	c            = tree_sitter.NewLanguage(tree_sitter_c.Language())
@@ -64,6 +66,8 @@ var (
 
 func GetParser(languageID string) (*tree_sitter.Language, bool) {
 	switch languageID {
+	case "lua":
+		return lua, true
 	case "markdown":
 		return md, true
 	case "cs":
