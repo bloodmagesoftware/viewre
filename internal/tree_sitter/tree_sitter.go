@@ -26,6 +26,8 @@ import (
 
 	tree_sitter "github.com/tree-sitter/go-tree-sitter"
 
+	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/filemode"
 	"github.com/go-git/go-git/v5/plumbing/format/diff"
 )
 
@@ -43,18 +45,33 @@ func parse(code []byte, lang string, oldTree *tree_sitter.Tree) (*tree_sitter.Tr
 	return tree, nil
 }
 
+type nullFile struct{}
+
+// Hash returns the File Hash.
+func (nullFile) Hash() plumbing.Hash {
+	return plumbing.ZeroHash
+}
+
+// Mode returns the FileMode.
+func (nullFile) Mode() filemode.FileMode {
+	return filemode.FileMode(0)
+}
+
+// Path returns the complete Path to the file, including the filename.
+func (nullFile) Path() string {
+	return "/dev/null"
+}
+
 func Patch(a, b string, filePatch diff.FilePatch) (header string, body string) {
 	if filePatch == nil {
 		return
 	}
 	from, to := filePatch.Files()
 	if from == nil {
-		header = fmt.Sprintf("from is nil %v", filePatch)
-		return
+		from = nullFile{}
 	}
 	if to == nil {
-		header = fmt.Sprintf("to is nil %v", filePatch)
-		return
+		to = nullFile{}
 	}
 	headerBuilder := strings.Builder{}
 	headerBuilder.WriteString(`<p class="inline-block font-bold text-white">`)
@@ -181,7 +198,7 @@ func getNodeClass(nodeType string) (string, bool) {
 	case "comment", "line_comment", "block_comment", "//", "shebang":
 		return "text-neutral-400", true
 
-	case "string", "string_content", "string_fragment", "string_literal_content", "string_literal", "raw_string_literal", "interpreted_string_literal", "interpreted_string_literal_content", "\"", "'", "`", "fenced_code_block_delimiter", "indented_code_block", "fenced_code_block", "link_title":
+	case "string", "string_content", "string_fragment", "string_literal_content", "string_literal", "raw_string_literal", "interpreted_string_literal", "interpreted_string_literal_content", "\"", "'", "`", "fenced_code_block_delimiter", "indented_code_block", "fenced_code_block", "link_title", "attribute_value":
 		return "text-green-400", true
 
 	case "link_destination", "link_label":
@@ -196,13 +213,13 @@ func getNodeClass(nodeType string) (string, bool) {
 	case "number", "int", "float", "int_literal", "integer_literal", "float_literal", "rune_literal", "chan", "decimal_integer_literal", "hex_integer_literal", "octal_integer_literal", "binary_integer_literal", "true", "false":
 		return "text-amber-400", true
 
-	case "field_identifier":
+	case "field_identifier", "attribute_name":
 		return "text-blue-400", true
 
 	case "_line":
 		return "text-pink-400", true
 
-	case "identifier":
+	case "identifier", "tag_name":
 		return "text-white", true
 
 	case "type_identifier", "language", "void_type":
@@ -219,7 +236,7 @@ func getNodeClass(nodeType string) (string, bool) {
 	case "assembly", "get", "set":
 		return "text-purple-400", true
 
-	case "operator", ":=", "=", "+", "-", "~", "*", "/", "%", "==", "!=", "===", "!==", "=>", "==>", "<-", "->", "<<", ">>", "<", ">", "<=", ">=", "&&", "||", "!", "|", "&", "$":
+	case "operator", ":=", "=", "+", "-", "~", "*", "/", "%", "==", "!=", "===", "!==", "=>", "==>", "<-", "->", "<<", ">>", "<", ">", "/>", "</", "<=", ">=", "&&", "||", "!", "|", "&", "$":
 		return "text-cyan-400", true
 
 	case "#if", "#else", "#elif", "#endif", "#ifdef", "#ifndef", "#include":

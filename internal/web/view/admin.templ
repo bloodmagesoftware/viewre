@@ -25,7 +25,7 @@ templ Admin() {
 		<details>
 			<summary class="cursor-pointer">Add Repository</summary>
 			<form
-				action="/admin/repo"
+				action="/api/repo"
 				method="POST"
 				class="mt-4 p-4 bg-stone-900 rounded-lg"
 			>
@@ -106,7 +106,7 @@ templ Admin() {
 					type="submit"
 					class="inline ml-4 text-red-700 cursor-pointer hover:text-red-800"
 					data-name={ key }
-					onclick="fetch(`/admin/repo?name=${ this.dataset.name }`, {method: 'DELETE'}).then(resp => {if (resp.ok) {window.location.reload()}}).catch(alert)"
+					onclick="fetch(`/api/repo?name=${ this.dataset.name }`, {method: 'DELETE'}).then(resp => {if (resp.ok) {window.location.reload()}}).catch(alert)"
 				>Delete</button>
 			</div>
 		}
