@@ -81,35 +81,42 @@ async function hoverEvent(targetEl: HTMLElement) {
     hoverEl.id = "hover";
     document.body.appendChild(hoverEl);
   }
+  hoverEl.innerText = "Waiting for language server to response...";
+  hoverEl.classList.remove("hidden");
+  hoverEl.classList.add("block");
+  positionHoverEl(targetEl, hoverEl);
   const hover = await getSymbolHover(targetEl);
   if (hover) {
     hoverEl.innerHTML = hover;
-    hoverEl.classList.remove("hidden");
-    hoverEl.classList.add("block");
-    requestAnimationFrame(() => {
-      const symbolRect = targetEl.getBoundingClientRect();
-      const hoverRect = hoverEl.getBoundingClientRect();
-      const bodyRect = document.body.getBoundingClientRect();
-      const horizontalCenter = symbolRect.left + symbolRect.width / 2;
-
-      const posX = clamp(
-        0,
-        horizontalCenter - hoverRect.width / 2,
-        bodyRect.width - hoverRect.width,
-      );
-      const posY = clamp(
-        0,
-        symbolRect.top - hoverRect.height - 8,
-        bodyRect.height - hoverRect.height,
-      );
-
-      hoverEl.style.left = `${posX}px`;
-      hoverEl.style.top = `${posY}px`;
-    });
+    positionHoverEl(targetEl, hoverEl);
     return true;
   } else {
+    console.log("Hover not found");
     return false;
   }
+}
+
+function positionHoverEl(targetEl: HTMLElement, hoverEl: HTMLElement) {
+  requestAnimationFrame(() => {
+    const symbolRect = targetEl.getBoundingClientRect();
+    const hoverRect = hoverEl.getBoundingClientRect();
+    const bodyRect = document.body.getBoundingClientRect();
+    const horizontalCenter = symbolRect.left + symbolRect.width / 2;
+
+    const posX = clamp(
+      0,
+      horizontalCenter - hoverRect.width / 2,
+      bodyRect.width - hoverRect.width,
+    );
+    const posY = clamp(
+      0,
+      symbolRect.top - hoverRect.height - 8,
+      bodyRect.height - hoverRect.height,
+    );
+
+    hoverEl.style.left = `${posX}px`;
+    hoverEl.style.top = `${posY}px`;
+  });
 }
 
 function clamp(min: number, value: number, max: number) {
