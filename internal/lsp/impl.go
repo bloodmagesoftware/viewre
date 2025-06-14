@@ -25,6 +25,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"unicode/utf16"
@@ -67,9 +68,10 @@ type lspMessage struct {
 }
 
 type initializeParams struct {
-	ProcessID    int            `json:"processId"`
-	RootURI      string         `json:"rootUri"`
-	Capabilities map[string]any `json:"capabilities"`
+	ProcessID             int            `json:"processId"`
+	RootURI               string         `json:"rootUri"`
+	Capabilities          map[string]any `json:"capabilities"`
+	InitializationOptions any            `json:"initializationOptions,omitempty"`
 }
 
 type textDocumentItem struct {
@@ -208,6 +210,83 @@ func (ls *LanguageServer) HoverLineColumn(file string, line int, column int) (Ho
 	return ls.parseHoverResponse(response), nil
 }
 
+func (ls *LanguageServer) initializationOptions() any {
+	cmdName := filepath.Base(ls.cmd.Path)
+	switch cmdName {
+	case "rust-analyzer":
+		return getLspInitializationOptions(lspRustAnalyzer)
+	case "gopls":
+		return getLspInitializationOptions(lspGopls)
+	}
+	if slices.Contains(ls.cmd.Args, "rust-analyzer") {
+		return getLspInitializationOptions(lspRustAnalyzer)
+	}
+	if slices.Contains(ls.cmd.Args, "gopls") {
+		return getLspInitializationOptions(lspGopls)
+	}
+	return nil
+}
+
+type lspImpl uint8
+
+const (
+	lspRustAnalyzer lspImpl = iota
+	lspGopls
+)
+
+func getLspInitializationOptions(lsp lspImpl) any {
+	switch lsp {
+	case lspRustAnalyzer:
+		fmt.Println("using rust-analyzer initialization options")
+		enableFalse := map[string]bool{
+			"enable": false,
+		}
+		return map[string]any{
+			"rust-analyzer": map[string]any{
+				"cachePriming": enableFalse,
+				"diagnostics":  enableFalse,
+				"procMacro":    enableFalse,
+				"lens":         enableFalse,
+				"inlayHints":   enableFalse,
+				"cargo": map[string]any{
+					"loadOutDirsFromCheck": true,
+					"buildScripts":         enableFalse,
+				},
+				"semanticTokens": enableFalse,
+				"completion": map[string]any{
+					"autoself": enableFalse,
+					"callable": map[string]any{
+						"snippets": "none",
+					},
+				},
+				"hover": map[string]any{
+					"actions": enableFalse,
+				},
+				"runnables": map[string]any{
+					"overrideCargo": "echo",
+				},
+			},
+		}
+	case lspGopls:
+		fmt.Println("using gopls initialization options")
+		emptyObject := map[string]any{}
+		return map[string]any{
+			"gopls": map[string]any{
+				"ui.codelenses":                 emptyObject,
+				"ui.inlayhints":                 emptyObject,
+				"ui.semanticTokens":             false,
+				"ui.diagnostics.analyses":       emptyObject,
+				"staticcheck":                   false,
+				"ui.completion.usePlaceholders": false,
+				"ui.completion.wantSnippets":    false,
+				"build.directoryFilters":        []string{"-node_modules", "-.git", "-vendor"},
+				"build.memoryMode":              "DegradeClosed",
+			},
+		}
+	}
+	return nil
+}
+
 func (ls *LanguageServer) initialize() error {
 	id := ls.getNextID()
 	initMsg := lspMessage{
@@ -224,6 +303,7 @@ func (ls *LanguageServer) initialize() error {
 					},
 				},
 			},
+			InitializationOptions: ls.initializationOptions(),
 		},
 	}
 
