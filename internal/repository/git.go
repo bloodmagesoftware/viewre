@@ -139,6 +139,19 @@ func Log(ctx context.Context, repo *db.Repo) (string, error) {
 		return "", fmt.Errorf("failed to fetch: %w", err)
 	}
 
+	w, err := r.Worktree()
+	if err != nil {
+		return "", fmt.Errorf("open worktree: %w", err)
+	}
+
+	if err := w.Pull(&git.PullOptions{
+		RemoteName: "origin",
+		Auth:       auth,
+		Force:      true,
+	}); err != nil && !errors.Is(err, git.NoErrAlreadyUpToDate) {
+		return "", fmt.Errorf("pull failed: %w", err)
+	}
+
 	cmd := exec.CommandContext(ctx, "git", "log", "--pretty=oneline", "--graph", "--decorate", "--all", "--branches", "--no-color")
 	cmd.Dir = repoPath
 	out, err := cmd.Output()
