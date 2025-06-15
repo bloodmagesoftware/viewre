@@ -55,10 +55,14 @@ templ Repo() {
 
                 commitsContentEl.addEventListener("click", (event) => {
                     const targetEl = event.target;
-                    if (!(targetEl.dataset.commit)) {
-                        return;
-                    }
+                    if (targetEl.dataset.commit) {
                     compare(targetEl.dataset.commit);
+                    } else {
+                        const parentEl = targetEl.parentElement;
+                        if (parentEl.dataset.commit) {
+                            compare(parentEl.dataset.commit);
+                        }
+                    }
                 });
                 function diff() {
                     const base = baseCommitEl.value;
